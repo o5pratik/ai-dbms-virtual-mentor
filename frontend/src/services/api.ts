@@ -7,8 +7,7 @@ export type QueryResponse = {
   error?: string;
 };
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
 export async function executeQuery(query: string): Promise<QueryResponse> {
   const response = await fetch(`${API_BASE_URL}/api/execute`, {
