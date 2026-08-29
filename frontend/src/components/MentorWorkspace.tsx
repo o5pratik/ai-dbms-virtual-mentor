@@ -55,6 +55,14 @@ export function MentorWorkspace() {
     setQuery('');
     setResult(null);
     setError(null);
+    setMentorView({ kind: 'welcome' });
+  };
+
+  const changeQuery = (value: string) => {
+    setQuery(value);
+    setResult(null);
+    setError(null);
+    if (mentorView.kind === 'fix' || mentorView.kind === 'error') setMentorView({ kind: 'welcome' });
   };
 
   const mentorError = (caught: unknown) => {
@@ -146,8 +154,8 @@ export function MentorWorkspace() {
             <span className="flex h-full items-center border-b-2 border-[var(--blue)] px-2 font-mono text-[var(--muted-bright)]"><span className="mr-2 h-2 w-2 rounded-sm bg-[var(--blue)]" />query.sql</span>
             <span className="ml-auto text-[10px] text-[var(--muted)]">SQLite · read-only sandbox</span>
           </div>
-          <SqlEditor value={query} onChange={setQuery} onRun={runQuery} />
-          <ResultsPanel result={result} error={error} running={running} />
+          <SqlEditor value={query} onChange={changeQuery} onRun={runQuery} />
+          <ResultsPanel result={result} error={error} running={running} onFix={fixCurrentQuery} />
         </div>
       </section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section>}
 

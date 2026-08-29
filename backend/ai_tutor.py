@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from difflib import get_close_matches
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -133,42 +134,75 @@ def fix_query(query: str, database_error: str = "") -> dict[str, Any]:
     corrected = query.strip()
     replacements = [
         (r"\bSELEC\b", "SELECT", "Corrected SELEC to SELECT."),
+        (r"\bSELCT\b", "SELECT", "Corrected SELCT to SELECT."),
+        (r"\bSLECT\b", "SELECT", "Corrected SLECT to SELECT."),
         (r"\bFORM\b", "FROM", "Corrected FORM to FROM."),
+        (r"\bFRM\b", "FROM", "Corrected FRM to FROM."),
+        (r"\bWHER\b", "WHERE", "Corrected WHER to WHERE."),
+        (r"\bODER\s+BY\b", "ORDER BY", "Corrected ODER BY to ORDER BY."),
+        (r"\bGROP\s+BY\b", "GROUP BY", "Corrected GROP BY to GROUP BY."),
         (r"\bStudnt\b", "Student", "Corrected the table name to Student."),
+        (r"\bEnrolment\b", "Enrollment", "Corrected the table name to Enrollment."),
+        (r"\bDepartmnt\b", "Department", "Corrected the table name to Department."),
+        (r"\bTecher\b", "Teacher", "Corrected the table name to Teacher."),
     ]
-    fallback: dict[str, Any]
     applied_reasons: list[str] = []
     for pattern, replacement, reason in replacements:
         if re.search(pattern, corrected, re.IGNORECASE):
             corrected = re.sub(pattern, replacement, corrected, count=1, flags=re.IGNORECASE)
             applied_reasons.append(reason)
 
+    if re.search(r"\bSELECT\s+FROM\b", corrected, re.IGNORECASE):
+        corrected = re.sub(r"\bSELECT\s+FROM\b", "SELECT * FROM", corrected, count=1, flags=re.IGNORECASE)
+        applied_reasons.append("Added the missing SELECT column list.")
+
+    if re.search(r",(\s*)FROM\b", corrected, re.IGNORECASE):
+        corrected = re.sub(r",(\s*)FROM\b", r"\1FROM", corrected, count=1, flags=re.IGNORECASE)
+        applied_reasons.append("Removed the extra comma before FROM.")
+
+    select_match = re.search(r"\bSELECT\s+(?:DISTINCT\s+)?([\s\S]+?)\s+FROM\b", corrected, re.IGNORECASE)
+    first_expression = select_match.group(1).split(",")[0].strip() if select_match else "1"
+    first_expression = re.sub(r"\s+AS\s+[A-Za-z_]\w*$", "", first_expression, flags=re.IGNORECASE)
+
+    if re.search(r"\bORDER\s+BY\s*(?=(?:LIMIT|OFFSET)\b|;|$)", corrected, re.IGNORECASE):
+        corrected = re.sub(r"\bORDER\s+BY\s*(?=(?:LIMIT|OFFSET)\b|;|$)", f"ORDER BY {first_expression}\n", corrected, count=1, flags=re.IGNORECASE)
+        applied_reasons.append(f"Completed ORDER BY with {first_expression}.")
+
+    if re.search(r"\bGROUP\s+BY\s*(?=(?:HAVING|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)", corrected, re.IGNORECASE):
+        corrected = re.sub(r"\bGROUP\s+BY\s*(?=(?:HAVING|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)", f"GROUP BY {first_expression}\n", corrected, count=1, flags=re.IGNORECASE)
+        applied_reasons.append(f"Completed GROUP BY with {first_expression}.")
+
+    if re.search(r"\bWHERE\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)", corrected, re.IGNORECASE):
+        corrected = re.sub(r"\bWHERE\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)", "", corrected, count=1, flags=re.IGNORECASE)
+        applied_reasons.append("Removed the incomplete WHERE clause because it had no condition.")
+
+    if re.search(r"\bHAVING\s*(?=(?:ORDER\s+BY|LIMIT|OFFSET)\b|;|$)", corrected, re.IGNORECASE):
+        corrected = re.sub(r"\bHAVING\s*(?=(?:ORDER\s+BY|LIMIT|OFFSET)\b|;|$)", "", corrected, count=1, flags=re.IGNORECASE)
+        applied_reasons.append("Removed the incomplete HAVING clause because it had no condition.")
+
+    missing_table = re.search(r"no such table:\s*([A-Za-z_]\w*)", database_error, re.IGNORECASE)
+    if missing_table:
+        value = missing_table.group(1)
+        matches = get_close_matches(value, ["Student", "Course", "Teacher", "Department", "Enrollment"], n=1, cutoff=0.6)
+        if matches:
+            corrected = re.sub(rf"\b{re.escape(value)}\b", matches[0], corrected, flags=re.IGNORECASE)
+            applied_reasons.append(f"Replaced the unknown table {value} with {matches[0]}.")
+
+    missing_column = re.search(r"no such column:\s*(?:[A-Za-z_]\w*\.)?([A-Za-z_]\w*)", database_error, re.IGNORECASE)
+    if missing_column:
+        value = missing_column.group(1)
+        choices = ["student_id", "course_id", "teacher_id", "dept_id", "name", "marks", "semester", "course_name", "dept_name"]
+        matches = get_close_matches(value, choices, n=1, cutoff=0.6)
+        if matches:
+            corrected = re.sub(rf"\b{re.escape(value)}\b", matches[0], corrected, flags=re.IGNORECASE)
+            applied_reasons.append(f"Replaced the unknown column {value} with {matches[0]}.")
+
     if applied_reasons:
-        fallback = {
-            "has_error": True,
-            "error_explanation": database_error or "A SQL keyword or table name was misspelled.",
-            "corrected_sql": corrected,
-            "reason": " ".join(applied_reasons),
-            "source": "built-in",
-        }
+        fallback = {"has_error": True, "error_explanation": database_error or "A common SQL syntax problem was detected.", "corrected_sql": corrected, "reason": " ".join(applied_reasons), "source": "built-in"}
+    elif database_error:
+        fallback = {"has_error": True, "error_explanation": database_error, "corrected_sql": corrected, "reason": "The error was detected, but an automatic edit would be unsafe. Review the database message and CollegeDB column names.", "source": "built-in"}
     else:
-        if re.search(r"\bWHERE\s*;?\s*$", corrected, re.IGNORECASE):
-            corrected = re.sub(r"\bWHERE\s*;?\s*$", "WHERE marks > 80;", corrected, flags=re.IGNORECASE)
-            fallback = {
-                "has_error": True,
-                "error_explanation": database_error or "WHERE requires a condition.",
-                "corrected_sql": corrected,
-                "reason": "Added a valid condition after WHERE.",
-                "source": "built-in",
-            }
-        else:
-            fallback = {
-                "has_error": bool(database_error),
-                "error_explanation": database_error or "No error is currently reported for this query.",
-                "corrected_sql": corrected,
-                "reason": "Check CollegeDB table and column names." if database_error else "No correction is needed.",
-                "source": "built-in",
-            }
+        fallback = {"has_error": False, "error_explanation": "No common syntax problem was detected in this query.", "corrected_sql": corrected, "reason": "Run the query to let SQLite check deeper semantic errors.", "source": "built-in"}
 
     response = _ask_groq(
         "Return only JSON with has_error, error_explanation, corrected_sql, and reason. Correct to exactly one read-only SQLite SELECT or WITH query using only the schema.",
