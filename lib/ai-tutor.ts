@@ -155,7 +155,7 @@ ORDER BY marks DESC;`;
 
 function fallbackFix(query: string, databaseError = ''): Fix {
   let corrected = query.trim();
-  let explanation = databaseError || 'The tutor reviewed the statement for common SQL syntax problems.';
+  const explanation = databaseError || 'The tutor reviewed the statement for common SQL syntax problems.';
   let reason = 'No common syntax issue was detected.';
   const appliedReasons: string[] = [];
 

@@ -1,12 +1,14 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bell, ChevronDown, CircleHelp, Eraser, Lightbulb, Play, Sparkles, WandSparkles } from 'lucide-react';
 
-import { executeQuery, explainQuery, fixQuery, suggestQuery, type QueryResponse } from '../services/api';
+import { executeQuery, explainQuery, fixQuery, getSchema, suggestQuery, type QueryResponse, type SchemaResponse } from '../services/api';
+import { ErDiagram } from './ErDiagram';
 import { MentorPanel, type MentorView } from './MentorPanel';
 import { ResultsPanel } from './ResultsPanel';
-import { Sidebar } from './Sidebar';
+import { SchemaContextPanel, SchemaExplorer, SchemaLoading } from './SchemaExplorer';
+import { Sidebar, type WorkspaceView } from './Sidebar';
 import { SqlEditor } from './SqlEditor';
 
 const STARTER_QUERY = `SELECT s.name, c.course_name, e.semester
@@ -23,6 +25,17 @@ export function MentorWorkspace() {
   const [running, setRunning] = useState(false);
   const [instruction, setInstruction] = useState('');
   const [mentorView, setMentorView] = useState<MentorView>({ kind: 'welcome' });
+  const [activeView, setActiveView] = useState<WorkspaceView>('playground');
+  const [selectedTable, setSelectedTable] = useState('Student');
+  const [schema, setSchema] = useState<SchemaResponse | null>(null);
+  const [schemaError, setSchemaError] = useState('');
+
+  useEffect(() => {
+    if (activeView === 'playground' || schema) return;
+    let cancelled = false;
+    getSchema().then((data) => { if (!cancelled) setSchema(data); }).catch((caught) => { if (!cancelled) setSchemaError(caught instanceof Error ? caught.message : 'The schema could not be loaded.'); });
+    return () => { cancelled = true; };
+  }, [activeView, schema]);
 
   const runQuery = useCallback(async () => {
     if (!query.trim() || running) return;
@@ -111,9 +124,9 @@ export function MentorWorkspace() {
         </div>
       </header>
 
-      <Sidebar />
+      <Sidebar activeView={activeView} selectedTable={selectedTable} onNavigate={setActiveView} onSelectTable={setSelectedTable} />
 
-      <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
+      {activeView === 'playground' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-2.5">
           <div className="flex items-center gap-2">
             <button type="button" onClick={runQuery} disabled={running || !query.trim()} className="flex items-center gap-2 rounded-lg bg-[linear-gradient(135deg,var(--blue),#806dff)] px-3.5 py-2 text-xs font-bold text-white shadow-[0_5px_16px_rgb(109_141_255_/_20%)] transition disabled:cursor-not-allowed disabled:opacity-50">
@@ -136,16 +149,16 @@ export function MentorWorkspace() {
           <SqlEditor value={query} onChange={setQuery} onRun={runQuery} />
           <ResultsPanel result={result} error={error} running={running} />
         </div>
-      </section>
+      </section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section>}
 
-      <MentorPanel
+      {activeView === 'playground' ? <MentorPanel
         view={mentorView}
         instruction={instruction}
         onInstructionChange={setInstruction}
         onAsk={() => suggestCurrentQuery(instruction)}
         onApply={applyMentorSql}
         onReject={() => setMentorView({ kind: 'welcome' })}
-      />
+      /> : schema ? <SchemaContextPanel schema={schema} selectedTable={selectedTable} /> : <aside className="app-mentor border-l border-[var(--border)] bg-[var(--surface)]" />}
     </main>
   );
 }

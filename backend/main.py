@@ -7,6 +7,7 @@ from .database import initialize_database
 from .routes.execute import router as execute_router
 from .routes.explain import router as explain_router
 from .routes.fix import router as fix_router
+from .routes.schema import router as schema_router
 from .routes.suggest import router as suggest_router
 
 
@@ -35,6 +36,7 @@ app.include_router(execute_router)
 app.include_router(explain_router)
 app.include_router(suggest_router)
 app.include_router(fix_router)
+app.include_router(schema_router)
 
 
 @app.on_event("startup")

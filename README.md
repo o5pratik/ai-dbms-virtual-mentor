@@ -1,8 +1,8 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 2 combines the Phase 1 SQL playground with an interactive tutor that explains queries, suggests SQL from natural language, and repairs common SQL errors.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 3 combines the SQL playground and interactive tutor with automatic schema analysis, key discovery, and an interactive ER diagram.
 
-The supplied HTML prototype informed the dark IDE-style layout. The tutor actions are now connected to live APIs; schema analysis, history, ER diagrams, analytics, and learning topics remain later phases.
+The supplied HTML prototype informed the dark IDE-style layout. SQL tutoring, schema exploration, and ER mapping are connected; history, analytics, and learning topics remain later phases.
 
 ## Architecture
 
@@ -11,6 +11,7 @@ The supplied HTML prototype informed the dark IDE-style layout. The tutor action
 - **Hosted backend:** same-origin Vinext API route on Cloudflare Workers
 - **Database:** local SQLite (`database/college.db`) and hosted D1/SQLite CollegeDB
 - **AI tutor:** optional server-side Groq integration with a deterministic built-in tutor fallback
+- **Schema intelligence:** entity, column, primary-key, foreign-key, constraint, and cardinality analysis
 - **Security:** server-only AI credentials, read-only SQLite connection, statement authorizer, row and execution limits
 
 The web entry points are in `app/` for the Sites-compatible Vite runtime. Reusable product UI and services are in `frontend/src/`. Hosted API routes live under `app/api/`; matching local FastAPI implementations are separated under `backend/`.
@@ -90,6 +91,7 @@ Only read-only learning queries are accepted. Destructive statements return a sa
 - `POST /api/explain` accepts `query` and an optional `result_summary`.
 - `POST /api/suggest` accepts an `instruction` and optional `current_sql`.
 - `POST /api/fix` accepts `query` and an optional `database_error`.
+- `GET /api/schema` returns tables, columns, constraints, row counts, and relationships.
 
 Each response includes a `source` field (`groq` or `built-in`) so the interface reports which tutor answered.
 
@@ -107,5 +109,5 @@ npm run build
 ## Roadmap
 
 1. **Completed — Phase 2:** AI explanations, natural-language suggestions, and error fixes.
-2. **Phase 3:** schema analyzer, entity/key detection, ER diagrams, relationships, and cardinality.
+2. **Completed — Phase 3:** schema analyzer, entity/key detection, ER diagrams, relationships, and cardinality.
 3. **Phase 4:** query history, saved queries, analytics, export, and learning topics.
