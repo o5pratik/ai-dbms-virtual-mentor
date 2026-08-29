@@ -19,3 +19,18 @@ class QueryResponse(BaseModel):
     row_count: int
     execution_time: float
     error: str | None = None
+
+
+class ExplainRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=10_000)
+    result_summary: str = Field(default="", max_length=2_000)
+
+
+class SuggestRequest(BaseModel):
+    current_sql: str = Field(default="", max_length=10_000)
+    instruction: str = Field(default="", max_length=1_000)
+
+
+class FixRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=10_000)
+    database_error: str = Field(default="", max_length=2_000)

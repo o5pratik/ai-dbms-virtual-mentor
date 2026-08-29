@@ -5,6 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import initialize_database
 from .routes.execute import router as execute_router
+from .routes.explain import router as explain_router
+from .routes.fix import router as fix_router
+from .routes.suggest import router as suggest_router
 
 
 app = FastAPI(
@@ -29,6 +32,9 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 app.include_router(execute_router)
+app.include_router(explain_router)
+app.include_router(suggest_router)
+app.include_router(fix_router)
 
 
 @app.on_event("startup")
