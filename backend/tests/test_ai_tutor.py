@@ -34,6 +34,27 @@ class AiTutorFallbackTests(unittest.TestCase):
         self.assertTrue(response["has_error"])
         self.assertEqual(response["corrected_sql"], "SELECT * FROM Student;")
 
+    def test_fix_completes_order_by_before_limit(self) -> None:
+        query = """SELECT s.name, c.course_name, e.semester
+FROM Student AS s
+JOIN Enrollment AS e ON s.student_id = e.student_id
+JOIN Course AS c ON e.course_id = c.course_id
+WHERE e.semester = 4
+ORDER BY
+LIMIT 50;"""
+        response = fix_query(query, 'near "LIMIT": syntax error')
+        self.assertTrue(response["has_error"])
+        self.assertIn("ORDER BY s.name\nLIMIT 50", response["corrected_sql"])
+
+    def test_fix_detects_incomplete_clause_without_a_database_error(self) -> None:
+        response = fix_query("SELECT name FROM Student WHERE;", "")
+        self.assertTrue(response["has_error"])
+        self.assertEqual(response["corrected_sql"], "SELECT name FROM Student ;")
+
+    def test_fix_uses_database_error_to_correct_unknown_column(self) -> None:
+        response = fix_query("SELECT nme FROM Student;", "no such column: nme")
+        self.assertEqual(response["corrected_sql"], "SELECT name FROM Student;")
+
 
 if __name__ == "__main__":
     unittest.main()

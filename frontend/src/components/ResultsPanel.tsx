@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Clock3, Rows3 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock3, Rows3, WandSparkles } from 'lucide-react';
 
 import type { QueryResponse } from '../services/api';
 
@@ -6,9 +6,10 @@ type ResultsPanelProps = {
   result: QueryResponse | null;
   error: string | null;
   running: boolean;
+  onFix?: () => void;
 };
 
-export function ResultsPanel({ result, error, running }: ResultsPanelProps) {
+export function ResultsPanel({ result, error, running, onFix }: ResultsPanelProps) {
   return (
     <section className="flex min-h-[250px] flex-1 flex-col border-t border-[var(--border)] bg-[var(--surface)]">
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border)] px-4">
@@ -40,6 +41,7 @@ export function ResultsPanel({ result, error, running }: ResultsPanelProps) {
             <div>
               <p className="text-sm font-semibold text-[var(--red)]">SQL error</p>
               <p className="mt-1 font-mono text-xs leading-5 text-[var(--muted-bright)]">{error}</p>
+              {onFix ? <button type="button" onClick={onFix} className="mt-3 flex items-center gap-1.5 rounded-lg border border-[color:rgb(255_107_135_/_28%)] bg-[color:rgb(255_107_135_/_8%)] px-2.5 py-1.5 text-[10px] font-semibold text-[#ff9daf] hover:bg-[color:rgb(255_107_135_/_14%)]"><WandSparkles size={12} /> Fix with mentor</button> : null}
             </div>
           </div>
         ) : result ? (

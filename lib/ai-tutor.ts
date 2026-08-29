@@ -156,14 +156,21 @@ ORDER BY marks DESC;`;
 function fallbackFix(query: string, databaseError = ''): Fix {
   let corrected = query.trim();
   const explanation = databaseError || 'The tutor reviewed the statement for common SQL syntax problems.';
-  let reason = 'No common syntax issue was detected.';
   const appliedReasons: string[] = [];
 
   const replacements: Array<[RegExp, string, string]> = [
     [/\bSELEC\b/i, 'SELECT', 'Corrected SELEC to the SELECT keyword.'],
+    [/\bSELCT\b/i, 'SELECT', 'Corrected SELCT to the SELECT keyword.'],
+    [/\bSLECT\b/i, 'SELECT', 'Corrected SLECT to the SELECT keyword.'],
     [/\bFORM\b/i, 'FROM', 'Corrected FORM to the FROM keyword.'],
+    [/\bFRM\b/i, 'FROM', 'Corrected FRM to the FROM keyword.'],
+    [/\bWHER\b/i, 'WHERE', 'Corrected WHER to the WHERE keyword.'],
+    [/\bODER\s+BY\b/i, 'ORDER BY', 'Corrected ODER BY to ORDER BY.'],
+    [/\bGROP\s+BY\b/i, 'GROUP BY', 'Corrected GROP BY to GROUP BY.'],
     [/\bStudnt\b/i, 'Student', 'Corrected the table name to Student.'],
     [/\bEnrolment\b/i, 'Enrollment', 'Corrected the table name to Enrollment.'],
+    [/\bDepartmnt\b/i, 'Department', 'Corrected the table name to Department.'],
+    [/\bTecher\b/i, 'Teacher', 'Corrected the table name to Teacher.'],
   ];
 
   for (const [pattern, replacement, replacementReason] of replacements) {
@@ -173,23 +180,86 @@ function fallbackFix(query: string, databaseError = ''): Fix {
     }
   }
 
-  if (appliedReasons.length) {
-    reason = appliedReasons.join(' ');
-    return { has_error: true, error_explanation: explanation, corrected_sql: corrected, reason, source: 'built-in' };
+  if (/\bSELECT\s+FROM\b/i.test(corrected)) {
+    corrected = corrected.replace(/\bSELECT\s+FROM\b/i, 'SELECT * FROM');
+    appliedReasons.push('Added the missing SELECT column list.');
   }
 
-  if (/\bWHERE\s*;?\s*$/i.test(corrected)) {
-    corrected = corrected.replace(/\bWHERE\s*;?\s*$/i, 'WHERE marks > 80;');
-    reason = 'WHERE requires a condition, so a valid marks condition was added.';
-    return { has_error: true, error_explanation: explanation, corrected_sql: corrected, reason, source: 'built-in' };
+  if (/,(\s*)FROM\b/i.test(corrected)) {
+    corrected = corrected.replace(/,(\s*)FROM\b/i, '$1FROM');
+    appliedReasons.push('Removed the extra comma before FROM.');
+  }
+
+  const firstSelectExpression = corrected
+    .match(/\bSELECT\s+(?:DISTINCT\s+)?([\s\S]+?)\s+FROM\b/i)?.[1]
+    ?.split(',')[0]
+    ?.trim()
+    ?.replace(/\s+AS\s+[A-Za-z_]\w*$/i, '') || '1';
+
+  if (/\bORDER\s+BY\s*(?=(?:LIMIT|OFFSET)\b|;|$)/i.test(corrected)) {
+    corrected = corrected.replace(/\bORDER\s+BY\s*(?=(?:LIMIT|OFFSET)\b|;|$)/i, `ORDER BY ${firstSelectExpression}\n`);
+    appliedReasons.push(`Completed ORDER BY with ${firstSelectExpression}.`);
+  }
+
+  if (/\bGROUP\s+BY\s*(?=(?:HAVING|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)/i.test(corrected)) {
+    corrected = corrected.replace(/\bGROUP\s+BY\s*(?=(?:HAVING|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)/i, `GROUP BY ${firstSelectExpression}\n`);
+    appliedReasons.push(`Completed GROUP BY with ${firstSelectExpression}.`);
+  }
+
+  if (/\bWHERE\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)/i.test(corrected)) {
+    corrected = corrected.replace(/\bWHERE\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)/i, '');
+    appliedReasons.push('Removed the incomplete WHERE clause because it had no condition.');
+  }
+
+  if (/\bHAVING\s*(?=(?:ORDER\s+BY|LIMIT|OFFSET)\b|;|$)/i.test(corrected)) {
+    corrected = corrected.replace(/\bHAVING\s*(?=(?:ORDER\s+BY|LIMIT|OFFSET)\b|;|$)/i, '');
+    appliedReasons.push('Removed the incomplete HAVING clause because it had no condition.');
+  }
+
+  const knownTables = ['Student', 'Course', 'Teacher', 'Department', 'Enrollment'];
+  const knownColumns = ['student_id', 'course_id', 'teacher_id', 'dept_id', 'name', 'marks', 'semester', 'course_name', 'dept_name'];
+  const distance = (left: string, right: string) => {
+    const rows = Array.from({ length: left.length + 1 }, (_, index) => index);
+    for (let column = 1; column <= right.length; column += 1) {
+      let previous = rows[0];
+      rows[0] = column;
+      for (let row = 1; row <= left.length; row += 1) {
+        const saved = rows[row];
+        rows[row] = Math.min(rows[row] + 1, rows[row - 1] + 1, previous + (left[row - 1].toLowerCase() === right[column - 1].toLowerCase() ? 0 : 1));
+        previous = saved;
+      }
+    }
+    return rows[left.length];
+  };
+  const closest = (value: string, choices: string[]) => choices.map((choice) => ({ choice, score: distance(value, choice) })).sort((a, b) => a.score - b.score)[0];
+
+  const missingTable = databaseError.match(/no such table:\s*([A-Za-z_]\w*)/i)?.[1];
+  if (missingTable) {
+    const match = closest(missingTable, knownTables);
+    if (match && match.score <= 3) {
+      corrected = corrected.replace(new RegExp(`\\b${missingTable}\\b`, 'gi'), match.choice);
+      appliedReasons.push(`Replaced the unknown table ${missingTable} with ${match.choice}.`);
+    }
+  }
+
+  const missingColumn = databaseError.match(/no such column:\s*(?:[A-Za-z_]\w*\.)?([A-Za-z_]\w*)/i)?.[1];
+  if (missingColumn) {
+    const match = closest(missingColumn, knownColumns);
+    if (match && match.score <= 3) {
+      corrected = corrected.replace(new RegExp(`\\b${missingColumn}\\b`, 'gi'), match.choice);
+      appliedReasons.push(`Replaced the unknown column ${missingColumn} with ${match.choice}.`);
+    }
+  }
+
+  if (appliedReasons.length) {
+    return { has_error: true, error_explanation: explanation, corrected_sql: corrected, reason: appliedReasons.join(' '), source: 'built-in' };
   }
 
   if (databaseError) {
-    reason = 'The database reported an error, but an automatic correction needs more context. Check table and column names in CollegeDB.';
-    return { has_error: true, error_explanation: explanation, corrected_sql: corrected, reason, source: 'built-in' };
+    return { has_error: true, error_explanation: explanation, corrected_sql: corrected, reason: 'The error was detected, but an automatic edit would be unsafe. Review the highlighted database message and CollegeDB column names.', source: 'built-in' };
   }
 
-  return { has_error: false, error_explanation: 'No error is currently reported for this query.', corrected_sql: corrected, reason, source: 'built-in' };
+  return { has_error: false, error_explanation: 'No common syntax problem was detected in this query.', corrected_sql: corrected, reason: 'Run the query to let SQLite check deeper semantic errors.', source: 'built-in' };
 }
 
 export async function explainSql(query: string, resultSummary = ''): Promise<Explanation> {
