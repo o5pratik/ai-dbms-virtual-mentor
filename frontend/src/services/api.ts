@@ -60,6 +60,17 @@ export type SchemaResponse = {
   relationships: SchemaRelationship[];
   totals: { tables: number; columns: number; primary_keys: number; foreign_keys: number };
 };
+export type HistoryItem = {
+  id: number;
+  query: string;
+  success: number;
+  row_count: number;
+  execution_time: number;
+  error: string | null;
+  executed_at: string;
+};
+export type SavedQueryItem = { id: number; name: string; query: string; created_at: string };
+export type ProgressItem = { topic_id: string; completed: number; updated_at: string };
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
@@ -102,4 +113,39 @@ export async function getSchema(): Promise<SchemaResponse> {
   const payload = (await response.json()) as SchemaResponse & { error?: string };
   if (!response.ok) throw new Error(payload.error ?? 'The database schema could not be loaded.');
   return payload;
+}
+
+async function jsonRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  const payload = (await response.json()) as T & { error?: string };
+  if (!response.ok) throw new Error(payload.error ?? 'The request could not be completed.');
+  return payload;
+}
+
+export async function getHistory() {
+  return (await jsonRequest<{ items: HistoryItem[] }>('/api/history')).items;
+}
+
+export async function clearHistory() {
+  return jsonRequest<{ success: boolean }>('/api/history', { method: 'DELETE' });
+}
+
+export async function getSavedQueries() {
+  return (await jsonRequest<{ items: SavedQueryItem[] }>('/api/saved')).items;
+}
+
+export async function saveQuery(name: string, query: string) {
+  return jsonRequest<{ success: boolean; id: number }>('/api/saved', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, query }) });
+}
+
+export async function deleteSavedQuery(id: number) {
+  return jsonRequest<{ success: boolean }>('/api/saved', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+}
+
+export async function getProgress() {
+  return (await jsonRequest<{ items: ProgressItem[] }>('/api/progress')).items;
+}
+
+export async function setTopicProgress(topicId: string, completed: boolean) {
+  return jsonRequest<{ success: boolean }>('/api/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic_id: topicId, completed }) });
 }

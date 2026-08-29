@@ -1,0 +1,27 @@
+CREATE TABLE IF NOT EXISTS QueryHistory (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  query TEXT NOT NULL,
+  success INTEGER NOT NULL CHECK (success IN (0, 1)),
+  row_count INTEGER NOT NULL DEFAULT 0,
+  execution_time REAL NOT NULL DEFAULT 0,
+  error TEXT,
+  executed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_query_history_executed_at
+ON QueryHistory(executed_at DESC);
+
+CREATE TABLE IF NOT EXISTS SavedQuery (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  query TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS LearningProgress (
+  topic_id TEXT PRIMARY KEY,
+  completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+PRAGMA optimize;

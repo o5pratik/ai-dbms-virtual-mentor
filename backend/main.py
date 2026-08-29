@@ -8,6 +8,7 @@ from .routes.execute import router as execute_router
 from .routes.explain import router as explain_router
 from .routes.fix import router as fix_router
 from .routes.schema import router as schema_router
+from .routes.productivity import router as productivity_router
 from .routes.suggest import router as suggest_router
 
 
@@ -37,6 +38,7 @@ app.include_router(explain_router)
 app.include_router(suggest_router)
 app.include_router(fix_router)
 app.include_router(schema_router)
+app.include_router(productivity_router)
 
 
 @app.on_event("startup")

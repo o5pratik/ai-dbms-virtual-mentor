@@ -1,8 +1,8 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 3 combines the SQL playground and interactive tutor with automatic schema analysis, key discovery, and an interactive ER diagram.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 4 combines the SQL playground, interactive tutor, schema analysis, and ER diagram with persistent practice history, saved queries, analytics, exports, and guided learning.
 
-The supplied HTML prototype informed the dark IDE-style layout. SQL tutoring, schema exploration, and ER mapping are connected; history, analytics, and learning topics remain later phases.
+The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
 ## Architecture
 
@@ -12,6 +12,7 @@ The supplied HTML prototype informed the dark IDE-style layout. SQL tutoring, sc
 - **Database:** local SQLite (`database/college.db`) and hosted D1/SQLite CollegeDB
 - **AI tutor:** optional server-side Groq integration with a deterministic built-in tutor fallback
 - **Schema intelligence:** entity, column, primary-key, foreign-key, constraint, and cardinality analysis
+- **Productivity:** D1-backed history, saved SQL, learning progress, practice analytics, and CSV/JSON export
 - **Security:** server-only AI credentials, read-only SQLite connection, statement authorizer, row and execution limits
 
 The web entry points are in `app/` for the Sites-compatible Vite runtime. Reusable product UI and services are in `frontend/src/`. Hosted API routes live under `app/api/`; matching local FastAPI implementations are separated under `backend/`.
@@ -92,6 +93,9 @@ Only read-only learning queries are accepted. Destructive statements return a sa
 - `POST /api/suggest` accepts an `instruction` and optional `current_sql`.
 - `POST /api/fix` accepts `query` and an optional `database_error`.
 - `GET /api/schema` returns tables, columns, constraints, row counts, and relationships.
+- `GET/DELETE /api/history` lists or clears the latest 100 query attempts.
+- `GET/POST/DELETE /api/saved` manages reusable read-only queries.
+- `GET/POST /api/progress` reads and updates guided-learning progress.
 
 Each response includes a `source` field (`groq` or `built-in`) so the interface reports which tutor answered.
 
@@ -110,4 +114,4 @@ npm run build
 
 1. **Completed — Phase 2:** AI explanations, natural-language suggestions, and error fixes.
 2. **Completed — Phase 3:** schema analyzer, entity/key detection, ER diagrams, relationships, and cardinality.
-3. **Phase 4:** query history, saved queries, analytics, export, and learning topics.
+3. **Completed — Phase 4:** query history, saved queries, analytics, export, and learning topics.

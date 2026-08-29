@@ -14,6 +14,8 @@ React + Monaco
                                  +--> built-in tutor fallback
       |
       +-- GET /api/schema --> entities + constraints + relationships
+      |
+      +-- /api/{history,saved,progress} --> private D1 learning state
 ```
 
 The frontend is hosted from the project root so it remains compatible with the Sites runtime. Product-specific UI modules live in `frontend/src`. Backend modules remain isolated under `backend`, keeping the database executor and tutor provider replaceable without rewriting the interface.
@@ -28,3 +30,4 @@ The frontend is hosted from the project root so it remains compatible with the S
 - Groq credentials remain server-side and are never returned to the browser.
 - AI suggestions are constrained to one read-only `SELECT` or `WITH` query over the known CollegeDB schema.
 - Schema metadata is read-only and exposes structural information only, never database credentials.
+- Query history, saved SQL, and topic progress are persisted in D1; write routes use prepared statements and bounded inputs.
