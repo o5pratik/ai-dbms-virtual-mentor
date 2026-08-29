@@ -1,8 +1,8 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. This repository contains the Phase 1 MVP requested in the project brief: a React interface with a Monaco SQL editor, a FastAPI execution service, a seeded SQLite CollegeDB, safe query execution, and a professional results table.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 2 combines the Phase 1 SQL playground with an interactive tutor that explains queries, suggests SQL from natural language, and repairs common SQL errors.
 
-The supplied HTML prototype informed the dark IDE-style layout. Its simulated AI, schema, history, ER-diagram, and analytics features are intentionally not copied into the live product yet; those are preserved as later phases in the architecture.
+The supplied HTML prototype informed the dark IDE-style layout. The tutor actions are now connected to live APIs; schema analysis, history, ER diagrams, analytics, and learning topics remain later phases.
 
 ## Architecture
 
@@ -10,9 +10,10 @@ The supplied HTML prototype informed the dark IDE-style layout. Its simulated AI
 - **Local backend:** Python, FastAPI, Pydantic
 - **Hosted backend:** same-origin Vinext API route on Cloudflare Workers
 - **Database:** local SQLite (`database/college.db`) and hosted D1/SQLite CollegeDB
-- **Security:** read-only SQLite connection, statement authorizer, row and execution limits
+- **AI tutor:** optional server-side Groq integration with a deterministic built-in tutor fallback
+- **Security:** server-only AI credentials, read-only SQLite connection, statement authorizer, row and execution limits
 
-The web entry points are in `app/` for the Sites-compatible Vite runtime. Reusable product UI and services are in `frontend/src/`. The hosted SQL endpoint is `app/api/execute/route.ts`; the local FastAPI implementation remains separated under `backend/` so MySQL and Groq modules can be added later.
+The web entry points are in `app/` for the Sites-compatible Vite runtime. Reusable product UI and services are in `frontend/src/`. Hosted API routes live under `app/api/`; matching local FastAPI implementations are separated under `backend/`.
 
 See [docs/architecture.md](docs/architecture.md) for the request flow and security boundary.
 
@@ -37,7 +38,7 @@ Copy-Item .env.example .env.local
 Copy-Item backend\.env.example backend\.env
 ```
 
-`NEXT_PUBLIC_API_URL` is optional. Leave it unset to use the hosted same-origin D1 endpoint, or set it to `http://localhost:8000` to use FastAPI during local development. `GROQ_API_KEY` is documented for Phase 2 only and must remain on the backend.
+`NEXT_PUBLIC_API_URL` is optional. Leave it unset to use the hosted same-origin APIs, or set it to `http://localhost:8000` to use FastAPI during local development. `GROQ_API_KEY` is optional and must remain server-side. Without it, tutor features use the built-in fallback. `GROQ_MODEL` defaults to `openai/gpt-oss-120b`.
 
 ## Run locally
 
@@ -84,6 +85,14 @@ Successful response:
 
 Only read-only learning queries are accepted. Destructive statements return a safe `400` response.
 
+### Tutor APIs
+
+- `POST /api/explain` accepts `query` and an optional `result_summary`.
+- `POST /api/suggest` accepts an `instruction` and optional `current_sql`.
+- `POST /api/fix` accepts `query` and an optional `database_error`.
+
+Each response includes a `source` field (`groq` or `built-in`) so the interface reports which tutor answered.
+
 ## Database setup
 
 Local CollegeDB is created and seeded automatically when FastAPI starts. The hosted D1 database is initialized through `drizzle/0000_college_schema.sql` during deployment. Both contain `Student`, `Course`, `Teacher`, `Department`, and `Enrollment`.
@@ -95,8 +104,8 @@ python -m unittest discover -s backend\tests -v
 npm run build
 ```
 
-## Planned phases
+## Roadmap
 
-1. **Phase 2:** Groq-backed explanations, suggestions, and fixes.
+1. **Completed — Phase 2:** AI explanations, natural-language suggestions, and error fixes.
 2. **Phase 3:** schema analyzer, entity/key detection, ER diagrams, relationships, and cardinality.
 3. **Phase 4:** query history, saved queries, analytics, export, and learning topics.
