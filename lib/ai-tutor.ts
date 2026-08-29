@@ -206,6 +206,18 @@ function fallbackFix(query: string, databaseError = ''): Fix {
     appliedReasons.push(`Completed GROUP BY with ${firstSelectExpression}.`);
   }
 
+  const incompleteWhereComparison = /\bWHERE\s+[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?\s*(?:=|<>|!=|<=|>=|<|>|LIKE|IN)\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)/i;
+  if (incompleteWhereComparison.test(corrected)) {
+    corrected = corrected.replace(incompleteWhereComparison, '');
+    appliedReasons.push('Removed the incomplete WHERE comparison because it had no value.');
+  }
+
+  const incompleteJoinedComparison = /\b(?:AND|OR)\s+[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?\s*(?:=|<>|!=|<=|>=|<|>|LIKE|IN)\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)/i;
+  if (incompleteJoinedComparison.test(corrected)) {
+    corrected = corrected.replace(incompleteJoinedComparison, '');
+    appliedReasons.push('Removed the incomplete AND/OR comparison because it had no value.');
+  }
+
   if (/\bWHERE\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)/i.test(corrected)) {
     corrected = corrected.replace(/\bWHERE\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)/i, '');
     appliedReasons.push('Removed the incomplete WHERE clause because it had no condition.');

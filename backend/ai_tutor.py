@@ -172,6 +172,16 @@ def fix_query(query: str, database_error: str = "") -> dict[str, Any]:
         corrected = re.sub(r"\bGROUP\s+BY\s*(?=(?:HAVING|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)", f"GROUP BY {first_expression}\n", corrected, count=1, flags=re.IGNORECASE)
         applied_reasons.append(f"Completed GROUP BY with {first_expression}.")
 
+    incomplete_where_comparison = r"\bWHERE\s+[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?\s*(?:=|<>|!=|<=|>=|<|>|LIKE|IN)\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)"
+    if re.search(incomplete_where_comparison, corrected, re.IGNORECASE):
+        corrected = re.sub(incomplete_where_comparison, "", corrected, count=1, flags=re.IGNORECASE)
+        applied_reasons.append("Removed the incomplete WHERE comparison because it had no value.")
+
+    incomplete_joined_comparison = r"\b(?:AND|OR)\s+[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?\s*(?:=|<>|!=|<=|>=|<|>|LIKE|IN)\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)"
+    if re.search(incomplete_joined_comparison, corrected, re.IGNORECASE):
+        corrected = re.sub(incomplete_joined_comparison, "", corrected, count=1, flags=re.IGNORECASE)
+        applied_reasons.append("Removed the incomplete AND/OR comparison because it had no value.")
+
     if re.search(r"\bWHERE\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)", corrected, re.IGNORECASE):
         corrected = re.sub(r"\bWHERE\s*(?=(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET)\b|;|$)", "", corrected, count=1, flags=re.IGNORECASE)
         applied_reasons.append("Removed the incomplete WHERE clause because it had no condition.")
