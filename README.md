@@ -7,11 +7,12 @@ The supplied HTML prototype informed the dark IDE-style layout. Its simulated AI
 ## Architecture
 
 - **Frontend:** React, TypeScript, Tailwind CSS, Monaco Editor, Vinext/Vite
-- **Backend:** Python, FastAPI, Pydantic
-- **Database:** SQLite (`database/college.db`)
+- **Local backend:** Python, FastAPI, Pydantic
+- **Hosted backend:** same-origin Vinext API route on Cloudflare Workers
+- **Database:** local SQLite (`database/college.db`) and hosted D1/SQLite CollegeDB
 - **Security:** read-only SQLite connection, statement authorizer, row and execution limits
 
-The web entry points are in `app/` for the Sites-compatible Vite runtime. Reusable product UI and services are in `frontend/src/`. Backend code is fully separated under `backend/` so MySQL and Groq modules can be added later.
+The web entry points are in `app/` for the Sites-compatible Vite runtime. Reusable product UI and services are in `frontend/src/`. The hosted SQL endpoint is `app/api/execute/route.ts`; the local FastAPI implementation remains separated under `backend/` so MySQL and Groq modules can be added later.
 
 See [docs/architecture.md](docs/architecture.md) for the request flow and security boundary.
 
@@ -36,7 +37,7 @@ Copy-Item .env.example .env.local
 Copy-Item backend\.env.example backend\.env
 ```
 
-`GROQ_API_KEY` is documented for Phase 2 only and is not used by the MVP. It must remain on the backend.
+`NEXT_PUBLIC_API_URL` is optional. Leave it unset to use the hosted same-origin D1 endpoint, or set it to `http://localhost:8000` to use FastAPI during local development. `GROQ_API_KEY` is documented for Phase 2 only and must remain on the backend.
 
 ## Run locally
 
@@ -85,7 +86,7 @@ Only read-only learning queries are accepted. Destructive statements return a sa
 
 ## Database setup
 
-CollegeDB is created and seeded automatically when the backend starts. Its tables are `Student`, `Course`, `Teacher`, `Department`, and `Enrollment`. Delete only the database file if you deliberately want it regenerated from the seed script.
+Local CollegeDB is created and seeded automatically when FastAPI starts. The hosted D1 database is initialized through `drizzle/0000_college_schema.sql` during deployment. Both contain `Student`, `Course`, `Teacher`, `Department`, and `Enrollment`.
 
 ## Tests and build
 
