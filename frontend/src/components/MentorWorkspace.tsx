@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Bell, ChevronDown, CircleHelp, Eraser, Lightbulb, Play, Sparkles, WandSparkles } from 'lucide-react';
+import { Bell, ChevronDown, CircleHelp, Eraser, Lightbulb, Play, Save as SaveIcon, Sparkles, WandSparkles } from 'lucide-react';
 
-import { executeQuery, explainQuery, fixQuery, getSchema, suggestQuery, type QueryResponse, type SchemaResponse } from '../services/api';
+import { clearHistory, deleteSavedQuery, executeQuery, explainQuery, fixQuery, getHistory, getProgress, getSavedQueries, getSchema, saveQuery, setTopicProgress, suggestQuery, type HistoryItem, type ProgressItem, type QueryResponse, type SavedQueryItem, type SchemaResponse } from '../services/api';
 import { ErDiagram } from './ErDiagram';
 import { MentorPanel, type MentorView } from './MentorPanel';
+import { ProductivityContextPanel, ProductivityWorkspace } from './ProductivityWorkspace';
 import { ResultsPanel } from './ResultsPanel';
 import { SchemaContextPanel, SchemaExplorer, SchemaLoading } from './SchemaExplorer';
 import { Sidebar, type WorkspaceView } from './Sidebar';
@@ -29,13 +30,39 @@ export function MentorWorkspace() {
   const [selectedTable, setSelectedTable] = useState('Student');
   const [schema, setSchema] = useState<SchemaResponse | null>(null);
   const [schemaError, setSchemaError] = useState('');
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [saved, setSaved] = useState<SavedQueryItem[]>([]);
+  const [progress, setProgress] = useState<ProgressItem[]>([]);
+  const [productivityLoading, setProductivityLoading] = useState(false);
+  const [productivityLoaded, setProductivityLoaded] = useState(false);
+
+  const refreshProductivity = useCallback(async (showLoading = false) => {
+    if (showLoading) setProductivityLoading(true);
+    try {
+      const [nextHistory, nextSaved, nextProgress] = await Promise.all([getHistory(), getSavedQueries(), getProgress()]);
+      setHistory(nextHistory);
+      setSaved(nextSaved);
+      setProgress(nextProgress);
+      setProductivityLoaded(true);
+    } catch {
+      setProductivityLoaded(true);
+    } finally {
+      if (showLoading) setProductivityLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (activeView === 'playground' || schema) return;
+    if ((activeView !== 'schema' && activeView !== 'er') || schema) return;
     let cancelled = false;
     getSchema().then((data) => { if (!cancelled) setSchema(data); }).catch((caught) => { if (!cancelled) setSchemaError(caught instanceof Error ? caught.message : 'The schema could not be loaded.'); });
     return () => { cancelled = true; };
   }, [activeView, schema]);
+
+  useEffect(() => {
+    const productivityView = ['dashboard', 'history', 'saved', 'analytics', 'topics'].includes(activeView);
+    if (!productivityView || productivityLoaded) return;
+    void refreshProductivity(true);
+  }, [activeView, productivityLoaded, refreshProductivity]);
 
   const runQuery = useCallback(async () => {
     if (!query.trim() || running) return;
@@ -48,8 +75,9 @@ export function MentorWorkspace() {
       setError(caught instanceof Error ? caught.message : 'The query could not be executed.');
     } finally {
       setRunning(false);
+      void refreshProductivity();
     }
-  }, [query, running]);
+  }, [query, running, refreshProductivity]);
 
   const clearEditor = () => {
     setQuery('');
@@ -107,6 +135,52 @@ export function MentorWorkspace() {
     setMentorView({ kind: 'welcome' });
   };
 
+  const openInPlayground = (sql: string) => {
+    setQuery(sql);
+    setResult(null);
+    setError(null);
+    setMentorView({ kind: 'welcome' });
+    setActiveView('playground');
+  };
+
+  const saveSql = async (sql: string, requestedName?: string) => {
+    const table = sql.match(/\bFROM\s+([A-Za-z_]\w*)/i)?.[1] ?? 'SQL';
+    await saveQuery(requestedName ?? `${table} query ${saved.length + 1}`, sql);
+    await refreshProductivity();
+  };
+
+  const removeSaved = async (id: number) => {
+    await deleteSavedQuery(id);
+    await refreshProductivity();
+  };
+
+  const removeHistory = async () => {
+    await clearHistory();
+    await refreshProductivity();
+  };
+
+  const toggleTopic = async (topicId: string, completed: boolean) => {
+    await setTopicProgress(topicId, completed);
+    await refreshProductivity();
+  };
+
+  const exportResult = (format: 'csv' | 'json') => {
+    if (!result) return;
+    const records = result.rows.map((row) => Object.fromEntries(result.columns.map((column, index) => [column, row[index]])));
+    const content = format === 'json'
+      ? JSON.stringify(records, null, 2)
+      : [result.columns, ...result.rows].map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([content], { type: format === 'json' ? 'application/json' : 'text/csv' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `collegedb-results.${format}`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const completedTopics = new Set(progress.filter((item) => item.completed).map((item) => item.topic_id));
+  const schemaView = activeView === 'schema' || activeView === 'er';
+
   return (
     <main className="mentor-grid">
       <header className="app-header panel-shadow flex items-center justify-between border-b border-[var(--border)] bg-[color:rgb(14_19_29_/_94%)] px-4 backdrop-blur-xl">
@@ -146,7 +220,7 @@ export function MentorWorkspace() {
             <button type="button" onClick={() => suggestCurrentQuery()} disabled={mentorView.kind === 'loading'} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><Lightbulb size={14} /> AI Suggest</button>
             <button type="button" onClick={fixCurrentQuery} disabled={!query.trim() || mentorView.kind === 'loading'} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><WandSparkles size={14} /> Fix error</button>
           </div>
-          <button type="button" onClick={clearEditor} className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]"><Eraser size={14} /> Clear</button>
+          <div className="flex items-center gap-1"><button type="button" onClick={() => saveSql(query)} disabled={!query.trim()} className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40"><SaveIcon size={14} /> Save</button><button type="button" onClick={clearEditor} className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]"><Eraser size={14} /> Clear</button></div>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col">
@@ -155,9 +229,9 @@ export function MentorWorkspace() {
             <span className="ml-auto text-[10px] text-[var(--muted)]">SQLite · read-only sandbox</span>
           </div>
           <SqlEditor value={query} onChange={changeQuery} onRun={runQuery} />
-          <ResultsPanel result={result} error={error} running={running} onFix={fixCurrentQuery} />
+          <ResultsPanel result={result} error={error} running={running} onFix={fixCurrentQuery} onExportCsv={() => exportResult('csv')} onExportJson={() => exportResult('json')} />
         </div>
-      </section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section>}
+      </section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={setActiveView} onRunQuery={openInPlayground} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
 
       {activeView === 'playground' ? <MentorPanel
         view={mentorView}
@@ -166,7 +240,7 @@ export function MentorWorkspace() {
         onAsk={() => suggestCurrentQuery(instruction)}
         onApply={applyMentorSql}
         onReject={() => setMentorView({ kind: 'welcome' })}
-      /> : schema ? <SchemaContextPanel schema={schema} selectedTable={selectedTable} /> : <aside className="app-mentor border-l border-[var(--border)] bg-[var(--surface)]" />}
+      /> : schemaView ? (schema ? <SchemaContextPanel schema={schema} selectedTable={selectedTable} /> : <aside className="app-mentor border-l border-[var(--border)] bg-[var(--surface)]" />) : <ProductivityContextPanel history={history} saved={saved} completedTopics={completedTopics} />}
     </main>
   );
 }

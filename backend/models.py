@@ -34,3 +34,17 @@ class SuggestRequest(BaseModel):
 class FixRequest(BaseModel):
     query: str = Field(min_length=1, max_length=10_000)
     database_error: str = Field(default="", max_length=2_000)
+
+
+class SaveQueryRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    query: str = Field(min_length=1, max_length=10_000)
+
+
+class DeleteSavedRequest(BaseModel):
+    id: int = Field(gt=0)
+
+
+class ProgressRequest(BaseModel):
+    topic_id: str = Field(min_length=1, max_length=80)
+    completed: bool

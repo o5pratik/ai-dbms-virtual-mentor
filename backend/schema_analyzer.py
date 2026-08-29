@@ -12,7 +12,7 @@ DESCRIPTIONS = {
 
 def analyze_schema() -> dict:
     with open_read_only_connection() as connection:
-        table_names = [row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").fetchall()]
+        table_names = [row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('Department', 'Teacher', 'Course', 'Student', 'Enrollment') ORDER BY name").fetchall()]
         tables = []
         relationships = []
 

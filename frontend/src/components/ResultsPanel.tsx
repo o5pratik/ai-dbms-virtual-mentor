@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Clock3, Rows3, WandSparkles } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock3, Download, Rows3, WandSparkles } from 'lucide-react';
 
 import type { QueryResponse } from '../services/api';
 
@@ -7,9 +7,11 @@ type ResultsPanelProps = {
   error: string | null;
   running: boolean;
   onFix?: () => void;
+  onExportCsv?: () => void;
+  onExportJson?: () => void;
 };
 
-export function ResultsPanel({ result, error, running, onFix }: ResultsPanelProps) {
+export function ResultsPanel({ result, error, running, onFix, onExportCsv, onExportJson }: ResultsPanelProps) {
   return (
     <section className="flex min-h-[250px] flex-1 flex-col border-t border-[var(--border)] bg-[var(--surface)]">
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--border)] px-4">
@@ -22,9 +24,10 @@ export function ResultsPanel({ result, error, running, onFix }: ResultsPanelProp
           <button className="h-full text-[var(--muted)]" type="button" disabled>Messages</button>
         </div>
         {result ? (
-          <div className="flex items-center gap-4 text-[11px] text-[var(--muted)]">
+          <div className="flex items-center gap-3 text-[11px] text-[var(--muted)]">
             <span className="flex items-center gap-1.5"><Rows3 size={13} /> {result.row_count} rows</span>
             <span className="flex items-center gap-1.5"><Clock3 size={13} /> {result.execution_time} ms</span>
+            <div className="hidden items-center gap-1 border-l border-[var(--border)] pl-3 sm:flex"><Download size={12} /><button type="button" onClick={onExportCsv} className="rounded px-1.5 py-1 hover:bg-[var(--surface-muted)] hover:text-[var(--text)]">CSV</button><button type="button" onClick={onExportJson} className="rounded px-1.5 py-1 hover:bg-[var(--surface-muted)] hover:text-[var(--text)]">JSON</button></div>
           </div>
         ) : null}
       </div>
