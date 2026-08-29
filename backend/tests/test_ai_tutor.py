@@ -55,6 +55,18 @@ LIMIT 50;"""
         response = fix_query("SELECT nme FROM Student;", "no such column: nme")
         self.assertEqual(response["corrected_sql"], "SELECT name FROM Student;")
 
+    def test_fix_removes_comparison_with_missing_value(self) -> None:
+        query = """SELECT s.name, c.course_name, e.semester
+FROM Student AS s
+JOIN Enrollment AS e ON s.student_id = e.student_id
+JOIN Course AS c ON e.course_id = c.course_id
+WHERE e.semester =
+ORDER BY s.name;"""
+        response = fix_query(query, 'near "ORDER": syntax error')
+        self.assertTrue(response["has_error"])
+        self.assertNotIn("WHERE", response["corrected_sql"])
+        self.assertIn("ORDER BY s.name", response["corrected_sql"])
+
 
 if __name__ == "__main__":
     unittest.main()
