@@ -11,7 +11,7 @@ const navigation: Array<{ label: string; icon: LucideIcon; view?: WorkspaceView 
   { label: 'Query History', icon: Clock3, view: 'history' },
   { label: 'Saved Queries', icon: Save, view: 'saved' },
   { label: 'Analytics', icon: BarChart3, view: 'analytics' },
-  { label: 'Learning Topics', icon: BookOpen, view: 'topics' },
+  { label: 'Learning Path', icon: BookOpen, view: 'topics' },
 ];
 const tables = ['Student', 'Course', 'Teacher', 'Department', 'Enrollment'];
 
@@ -44,8 +44,8 @@ export function Sidebar({ activeView, selectedTable, onNavigate, onSelectTable }
       </div>
 
       <div className="mt-7 rounded-xl border border-[color:rgb(109_141_255_/_18%)] bg-[linear-gradient(145deg,rgb(109_141_255_/_9%),rgb(155_124_255_/_5%))] p-3">
-        <div className="flex items-center gap-2 text-xs font-semibold"><GraduationCap size={15} className="text-[var(--blue-bright)]" /> Phase 6 workspace</div>
-        <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Custom schema analysis and an interactive ER canvas are active.</p>
+        <div className="flex items-center gap-2 text-xs font-semibold"><GraduationCap size={15} className="text-[var(--blue-bright)]" /> Phase 8 workspace</div>
+        <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Adaptive lessons, quick checks, and skill analytics are active.</p>
       </div>
     </aside>
   );

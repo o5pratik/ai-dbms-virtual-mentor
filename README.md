@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 7 combines an intelligent SQL editor, real SQLite execution plans, the interactive tutor, custom schema analysis, persistent practice tools, and educational query-flow analysis.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 8 combines an adaptive SQL curriculum, skill analytics, an intelligent editor, real SQLite execution plans, the interactive tutor, custom schema analysis, and persistent practice tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -16,6 +16,8 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Query intelligence:** deterministic logical execution plans with clickable SQL stages, complexity, concepts, and learning tips
 - **Editor intelligence:** CollegeDB-aware completions and hover help, live diagnostics, SQL formatting, and keyboard shortcuts
 - **Planner intelligence:** database-native `EXPLAIN QUERY PLAN` output with scans, index lookups, temporary structures, and warnings
+- **Adaptive learning:** 12 lessons across SQL basics, querying, database design, and transactions with runnable challenges, hints, quick checks, and mentor explanations
+- **Skill analytics:** concept mastery, weak-area recommendations, practice coverage, and recurring error patterns derived from query history
 - **Productivity:** D1-backed history, saved SQL, learning progress, practice analytics, and CSV/JSON export
 - **Security:** server-only AI credentials, read-only SQLite connection, statement authorizer, row and execution limits
 
@@ -125,3 +127,4 @@ npm run build
 4. **Completed — Phase 5:** query analysis, interactive execution flow, and database messages.
 5. **Completed — Phase 6:** custom DDL schema analysis and pannable, zoomable ER diagrams.
 6. **Completed — Phase 7:** schema-aware SQL editing and real SQLite execution plans.
+7. **Completed — Phase 8:** expanded curriculum, interactive quick checks, and adaptive skill analytics.
