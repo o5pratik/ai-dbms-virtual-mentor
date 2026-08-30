@@ -71,6 +71,22 @@ export type HistoryItem = {
 };
 export type SavedQueryItem = { id: number; name: string; query: string; created_at: string };
 export type ProgressItem = { topic_id: string; completed: number; updated_at: string };
+export type QueryStepType = 'source' | 'join' | 'filter' | 'group' | 'having' | 'project' | 'sort' | 'limit';
+export type QueryFlowStep = {
+  id: string;
+  type: QueryStepType;
+  title: string;
+  detail: string;
+  sql_fragment: string;
+  concepts: string[];
+};
+export type QueryAnalysis = {
+  summary: string;
+  steps: QueryFlowStep[];
+  tables: string[];
+  estimated_complexity: 'Simple' | 'Moderate' | 'Advanced';
+  warnings: string[];
+};
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
@@ -106,6 +122,10 @@ export function suggestQuery(currentSql: string, instruction = '') {
 
 export function fixQuery(query: string, databaseError = '') {
   return postTutor<FixResponse>('/api/fix', { query, database_error: databaseError });
+}
+
+export function analyzeQuery(query: string) {
+  return postTutor<QueryAnalysis>('/api/analyze-query', { query });
 }
 
 export async function getSchema(): Promise<SchemaResponse> {

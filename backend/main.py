@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import initialize_database
 from .routes.execute import router as execute_router
+from .routes.analyze_query import router as analyze_query_router
 from .routes.explain import router as explain_router
 from .routes.fix import router as fix_router
 from .routes.schema import router as schema_router
@@ -34,6 +35,7 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 app.include_router(execute_router)
+app.include_router(analyze_query_router)
 app.include_router(explain_router)
 app.include_router(suggest_router)
 app.include_router(fix_router)
