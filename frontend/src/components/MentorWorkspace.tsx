@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Bell, ChevronDown, CircleHelp, Eraser, Lightbulb, Play, Save as SaveIcon, Sparkles, WandSparkles } from 'lucide-react';
+import { Bell, ChevronDown, CircleHelp, Eraser, Lightbulb, Play, Save as SaveIcon, Sparkles, WandSparkles, Workflow } from 'lucide-react';
 
-import { clearHistory, deleteSavedQuery, executeQuery, explainQuery, fixQuery, getHistory, getProgress, getSavedQueries, getSchema, saveQuery, setTopicProgress, suggestQuery, type HistoryItem, type ProgressItem, type QueryResponse, type SavedQueryItem, type SchemaResponse } from '../services/api';
+import { analyzeQuery, clearHistory, deleteSavedQuery, executeQuery, explainQuery, fixQuery, getHistory, getProgress, getSavedQueries, getSchema, saveQuery, setTopicProgress, suggestQuery, type HistoryItem, type ProgressItem, type QueryAnalysis, type QueryResponse, type SavedQueryItem, type SchemaResponse } from '../services/api';
 import { ErDiagram } from './ErDiagram';
 import { MentorPanel, type MentorView } from './MentorPanel';
 import { ProductivityContextPanel, ProductivityWorkspace } from './ProductivityWorkspace';
-import { ResultsPanel } from './ResultsPanel';
+import { ResultsPanel, type ResultTab } from './ResultsPanel';
 import { SchemaContextPanel, SchemaExplorer, SchemaLoading } from './SchemaExplorer';
 import { Sidebar, type WorkspaceView } from './Sidebar';
 import { SqlEditor } from './SqlEditor';
@@ -24,6 +24,10 @@ export function MentorWorkspace() {
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [analysis, setAnalysis] = useState<QueryAnalysis | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [resultTab, setResultTab] = useState<ResultTab>('output');
   const [instruction, setInstruction] = useState('');
   const [mentorView, setMentorView] = useState<MentorView>({ kind: 'welcome' });
   const [activeView, setActiveView] = useState<WorkspaceView>('playground');
@@ -68,6 +72,7 @@ export function MentorWorkspace() {
     if (!query.trim() || running) return;
     setRunning(true);
     setError(null);
+    setResultTab('output');
     try {
       setResult(await executeQuery(query));
     } catch (caught) {
@@ -83,6 +88,9 @@ export function MentorWorkspace() {
     setQuery('');
     setResult(null);
     setError(null);
+    setAnalysis(null);
+    setAnalysisError(null);
+    setResultTab('output');
     setMentorView({ kind: 'welcome' });
   };
 
@@ -90,6 +98,9 @@ export function MentorWorkspace() {
     setQuery(value);
     setResult(null);
     setError(null);
+    setAnalysis(null);
+    setAnalysisError(null);
+    setResultTab('output');
     if (mentorView.kind === 'fix' || mentorView.kind === 'error') setMentorView({ kind: 'welcome' });
   };
 
@@ -128,10 +139,28 @@ export function MentorWorkspace() {
     }
   };
 
+  const analyzeCurrentQuery = async () => {
+    if (!query.trim() || analysisLoading) return;
+    setResultTab('plan');
+    setAnalysisLoading(true);
+    setAnalysisError(null);
+    try {
+      setAnalysis(await analyzeQuery(query));
+    } catch (caught) {
+      setAnalysis(null);
+      setAnalysisError(caught instanceof Error ? caught.message : 'The query could not be analyzed.');
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
   const applyMentorSql = (sql: string) => {
     setQuery(sql);
     setResult(null);
     setError(null);
+    setAnalysis(null);
+    setAnalysisError(null);
+    setResultTab('output');
     setMentorView({ kind: 'welcome' });
   };
 
@@ -139,6 +168,9 @@ export function MentorWorkspace() {
     setQuery(sql);
     setResult(null);
     setError(null);
+    setAnalysis(null);
+    setAnalysisError(null);
+    setResultTab('output');
     setMentorView({ kind: 'welcome' });
     setActiveView('playground');
   };
@@ -216,6 +248,7 @@ export function MentorWorkspace() {
               <kbd className="ml-1 rounded border border-white/20 bg-black/10 px-1 py-0.5 font-mono text-[9px] font-medium">Ctrl ↵</kbd>
             </button>
             <div className="mx-1 h-5 w-px bg-[var(--border)]" />
+            <button type="button" onClick={analyzeCurrentQuery} disabled={!query.trim() || analysisLoading} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><Workflow size={14} /> {analysisLoading ? 'Analyzing…' : 'Analyze'}</button>
             <button type="button" onClick={explainCurrentQuery} disabled={!query.trim() || mentorView.kind === 'loading'} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><Sparkles size={14} /> Explain</button>
             <button type="button" onClick={() => suggestCurrentQuery()} disabled={mentorView.kind === 'loading'} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><Lightbulb size={14} /> AI Suggest</button>
             <button type="button" onClick={fixCurrentQuery} disabled={!query.trim() || mentorView.kind === 'loading'} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><WandSparkles size={14} /> Fix error</button>
@@ -229,7 +262,7 @@ export function MentorWorkspace() {
             <span className="ml-auto text-[10px] text-[var(--muted)]">SQLite · read-only sandbox</span>
           </div>
           <SqlEditor value={query} onChange={changeQuery} onRun={runQuery} />
-          <ResultsPanel result={result} error={error} running={running} onFix={fixCurrentQuery} onExportCsv={() => exportResult('csv')} onExportJson={() => exportResult('json')} />
+          <ResultsPanel result={result} error={error} running={running} analysis={analysis} analysisLoading={analysisLoading} analysisError={analysisError} activeTab={resultTab} onTabChange={setResultTab} onAnalyze={analyzeCurrentQuery} onFix={fixCurrentQuery} onExportCsv={() => exportResult('csv')} onExportJson={() => exportResult('json')} />
         </div>
       </section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={setActiveView} onRunQuery={openInPlayground} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
 
