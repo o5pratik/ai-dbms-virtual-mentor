@@ -1,3 +1,4 @@
+import re
 import sqlite3
 from dataclasses import dataclass
 from time import perf_counter
@@ -88,3 +89,29 @@ def execute_read_only_query(query: str) -> ExecutionResult:
     elapsed_ms = round((perf_counter() - started) * 1_000, 2)
     rows = [[record[column] for column in columns] for record in records]
     return ExecutionResult(columns=columns, rows=rows, execution_time=elapsed_ms)
+
+
+def explain_read_only_query(query: str) -> dict:
+    statement = query.strip().removesuffix(";").rstrip()
+    if not statement.upper().startswith(("SELECT", "WITH")):
+        raise QueryRejectedError("Execution plans are available only for SELECT and WITH queries.")
+    if ";" in statement:
+        raise QueryRejectedError("Generate a plan for one SQL statement at a time.")
+    with open_read_only_connection() as connection:
+        connection.set_authorizer(_authorize)
+        rows = connection.execute(f"EXPLAIN QUERY PLAN {statement}").fetchall()
+
+    steps = []
+    for row in rows:
+        detail = str(row[3])
+        upper = detail.upper()
+        operation = "scan" if "SCAN" in upper else "search" if "SEARCH" in upper else "temporary" if "TEMP" in upper or "B-TREE" in upper else "compound" if any(word in upper for word in ("UNION", "COMPOUND", "SUBQUERY", "CO-ROUTINE")) else "other"
+        table_match = re.search(r"\b(?:SCAN|SEARCH)\s+(?:TABLE\s+)?([A-Za-z_]\w*)", detail, re.I)
+        index_match = re.search(r"\bUSING\s+(?:AUTOMATIC\s+)?(?:COVERING\s+)?INDEX\s+([A-Za-z_]\w*)", detail, re.I)
+        steps.append({"id": int(row[0]), "parent": int(row[1]), "detail": detail, "operation": operation, "table": table_match.group(1) if table_match else None, "index": index_match.group(1) if index_match else None, "uses_index": bool(index_match or re.search(r"USING\s+INTEGER\s+PRIMARY\s+KEY", detail, re.I))})
+
+    summary = {"scans": sum(step["operation"] == "scan" for step in steps), "index_searches": sum(step["operation"] == "search" and step["uses_index"] for step in steps), "temporary_structures": sum(step["operation"] == "temporary" for step in steps)}
+    warnings = [f'{step["table"]} is scanned without an index lookup.' for step in steps if step["operation"] == "scan" and not step["uses_index"] and step["table"] and "CONSTANT ROW" not in step["detail"].upper()]
+    if summary["temporary_structures"]:
+        warnings.append("SQLite creates a temporary B-tree for part of this query, commonly sorting or grouping.")
+    return {"engine": "SQLite", "steps": steps, "summary": summary, "warnings": warnings}

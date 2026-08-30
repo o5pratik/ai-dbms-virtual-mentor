@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Bell, ChevronDown, CircleHelp, Eraser, Lightbulb, Play, Save as SaveIcon, Sparkles, WandSparkles, Workflow } from 'lucide-react';
+import { AlignLeft, Bell, ChevronDown, CircleHelp, Eraser, Lightbulb, Play, Save as SaveIcon, Sparkles, WandSparkles, Workflow } from 'lucide-react';
 
-import { analyzeQuery, analyzeSchema, clearHistory, deleteSavedQuery, executeQuery, explainQuery, fixQuery, getHistory, getProgress, getSavedQueries, getSchema, saveQuery, setTopicProgress, suggestQuery, type HistoryItem, type ProgressItem, type QueryAnalysis, type QueryResponse, type SavedQueryItem, type SchemaResponse } from '../services/api';
+import { analyzeQuery, analyzeSchema, clearHistory, deleteSavedQuery, executeQuery, explainQuery, fixQuery, getHistory, getProgress, getQueryPlan, getSavedQueries, getSchema, saveQuery, setTopicProgress, suggestQuery, type HistoryItem, type ProgressItem, type QueryAnalysis, type QueryPlanResponse, type QueryResponse, type SavedQueryItem, type SchemaResponse } from '../services/api';
+import { formatSql } from '../services/sql-intelligence';
 import { ErDiagram } from './ErDiagram';
 import { MentorPanel, type MentorView } from './MentorPanel';
 import { ProductivityContextPanel, ProductivityWorkspace } from './ProductivityWorkspace';
@@ -28,6 +29,8 @@ export function MentorWorkspace() {
   const [analysis, setAnalysis] = useState<QueryAnalysis | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [queryPlan, setQueryPlan] = useState<QueryPlanResponse | null>(null);
+  const [queryPlanError, setQueryPlanError] = useState<string | null>(null);
   const [resultTab, setResultTab] = useState<ResultTab>('output');
   const [instruction, setInstruction] = useState('');
   const [mentorView, setMentorView] = useState<MentorView>({ kind: 'welcome' });
@@ -94,6 +97,8 @@ export function MentorWorkspace() {
     setError(null);
     setAnalysis(null);
     setAnalysisError(null);
+    setQueryPlan(null);
+    setQueryPlanError(null);
     setResultTab('output');
     setMentorView({ kind: 'welcome' });
   };
@@ -104,6 +109,8 @@ export function MentorWorkspace() {
     setError(null);
     setAnalysis(null);
     setAnalysisError(null);
+    setQueryPlan(null);
+    setQueryPlanError(null);
     setResultTab('output');
     if (mentorView.kind === 'fix' || mentorView.kind === 'error') setMentorView({ kind: 'welcome' });
   };
@@ -148,14 +155,13 @@ export function MentorWorkspace() {
     setResultTab('plan');
     setAnalysisLoading(true);
     setAnalysisError(null);
-    try {
-      setAnalysis(await analyzeQuery(query));
-    } catch (caught) {
-      setAnalysis(null);
-      setAnalysisError(caught instanceof Error ? caught.message : 'The query could not be analyzed.');
-    } finally {
-      setAnalysisLoading(false);
-    }
+    setQueryPlanError(null);
+    const [logicalResult, planResult] = await Promise.allSettled([analyzeQuery(query), getQueryPlan(query)]);
+    if (logicalResult.status === 'fulfilled') setAnalysis(logicalResult.value);
+    else { setAnalysis(null); setAnalysisError(logicalResult.reason instanceof Error ? logicalResult.reason.message : 'The learning flow could not be generated.'); }
+    if (planResult.status === 'fulfilled') setQueryPlan(planResult.value);
+    else { setQueryPlan(null); setQueryPlanError(planResult.reason instanceof Error ? planResult.reason.message : 'SQLite could not generate an execution plan.'); }
+    setAnalysisLoading(false);
   };
 
   const analyzeCustomSchema = async (sql: string) => {
@@ -179,6 +185,8 @@ export function MentorWorkspace() {
     setError(null);
     setAnalysis(null);
     setAnalysisError(null);
+    setQueryPlan(null);
+    setQueryPlanError(null);
     setResultTab('output');
     setMentorView({ kind: 'welcome' });
   };
@@ -189,6 +197,8 @@ export function MentorWorkspace() {
     setError(null);
     setAnalysis(null);
     setAnalysisError(null);
+    setQueryPlan(null);
+    setQueryPlanError(null);
     setResultTab('output');
     setMentorView({ kind: 'welcome' });
     setActiveView('playground');
@@ -272,6 +282,7 @@ export function MentorWorkspace() {
             </button>
             <div className="mx-1 h-5 w-px bg-[var(--border)]" />
             <button type="button" onClick={analyzeCurrentQuery} disabled={!query.trim() || analysisLoading} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><Workflow size={14} /> {analysisLoading ? 'Analyzing…' : 'Analyze'}</button>
+            <button type="button" onClick={() => changeQuery(formatSql(query))} disabled={!query.trim()} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 lg:flex" title="Format SQL (Shift + Alt + F)"><AlignLeft size={14} /> Format</button>
             <button type="button" onClick={explainCurrentQuery} disabled={!query.trim() || mentorView.kind === 'loading'} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><Sparkles size={14} /> Explain</button>
             <button type="button" onClick={() => suggestCurrentQuery()} disabled={mentorView.kind === 'loading'} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><Lightbulb size={14} /> AI Suggest</button>
             <button type="button" onClick={fixCurrentQuery} disabled={!query.trim() || mentorView.kind === 'loading'} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><WandSparkles size={14} /> Fix error</button>
@@ -282,10 +293,10 @@ export function MentorWorkspace() {
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex h-9 shrink-0 items-center border-b border-[var(--border)] bg-[#0c111a] px-4 text-[11px]">
             <span className="flex h-full items-center border-b-2 border-[var(--blue)] px-2 font-mono text-[var(--muted-bright)]"><span className="mr-2 h-2 w-2 rounded-sm bg-[var(--blue)]" />query.sql</span>
-            <span className="ml-auto text-[10px] text-[var(--muted)]">SQLite · read-only sandbox</span>
+            <span className="ml-auto text-[10px] text-[var(--muted)]">SQLite · autocomplete · live diagnostics</span>
           </div>
-          <SqlEditor value={query} onChange={changeQuery} onRun={runQuery} />
-          <ResultsPanel result={result} error={error} running={running} analysis={analysis} analysisLoading={analysisLoading} analysisError={analysisError} activeTab={resultTab} onTabChange={setResultTab} onAnalyze={analyzeCurrentQuery} onFix={fixCurrentQuery} onExportCsv={() => exportResult('csv')} onExportJson={() => exportResult('json')} />
+          <SqlEditor value={query} onChange={changeQuery} onRun={runQuery} onFormat={() => changeQuery(formatSql(query))} />
+          <ResultsPanel result={result} error={error} running={running} analysis={analysis} analysisLoading={analysisLoading} analysisError={analysisError} queryPlan={queryPlan} queryPlanError={queryPlanError} activeTab={resultTab} onTabChange={setResultTab} onAnalyze={analyzeCurrentQuery} onFix={fixCurrentQuery} onExportCsv={() => exportResult('csv')} onExportJson={() => exportResult('json')} />
         </div>
       </section> : activeView === 'schema-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><SchemaLab analysis={customSchema} loading={customSchemaLoading} error={customSchemaError} selectedTable={selectedTable} onSelectTable={setSelectedTable} onAnalyze={analyzeCustomSchema} /></section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={navigateTo} onRunQuery={openInPlayground} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
 

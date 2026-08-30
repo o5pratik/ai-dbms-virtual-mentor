@@ -70,6 +70,10 @@ CREATE TABLE IF NOT EXISTS LearningProgress (
     completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_enrollment_semester ON Enrollment(semester);
+CREATE INDEX IF NOT EXISTS idx_student_marks ON Student(marks);
+PRAGMA optimize;
 """
 
 SEED_SQL = """

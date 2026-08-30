@@ -1,44 +1,12 @@
 import { env } from 'cloudflare:workers';
 
 import { recordQueryHistory } from '@/lib/productivity-store';
+import { validateReadOnlyQuery } from '@/lib/query-safety';
 
-const MAX_QUERY_LENGTH = 10_000;
 const MAX_RESULT_ROWS = 500;
-const FORBIDDEN_KEYWORDS = /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|REPLACE|ATTACH|DETACH|VACUUM|REINDEX|ANALYZE|PRAGMA|TRANSACTION|BEGIN|COMMIT|ROLLBACK)\b/i;
-const COMMENT_MARKERS = /--|\/\*/;
 
 type ExecuteRequest = { query?: unknown };
 type CellValue = string | number | null;
-
-function validateQuery(input: unknown): string {
-  if (typeof input !== 'string' || !input.trim()) {
-    throw new Error('Query must not be blank.');
-  }
-
-  const query = input.trim();
-  if (query.length > MAX_QUERY_LENGTH) {
-    throw new Error(`Query cannot exceed ${MAX_QUERY_LENGTH.toLocaleString()} characters.`);
-  }
-  if (COMMENT_MARKERS.test(query)) {
-    throw new Error('SQL comments are not allowed in the hosted learning sandbox.');
-  }
-
-  const withoutTerminalSemicolon = query.endsWith(';') ? query.slice(0, -1).trimEnd() : query;
-  if (withoutTerminalSemicolon.includes(';')) {
-    throw new Error('Run one SQL statement at a time.');
-  }
-  if (!/^(SELECT|WITH)\b/i.test(withoutTerminalSemicolon)) {
-    throw new Error('Only read-only SELECT and WITH queries are allowed in the learning sandbox.');
-  }
-  if (FORBIDDEN_KEYWORDS.test(withoutTerminalSemicolon)) {
-    throw new Error('This statement contains an operation that is not allowed in the read-only sandbox.');
-  }
-  if (/\bload_extension\s*\(/i.test(withoutTerminalSemicolon)) {
-    throw new Error('Loading SQLite extensions is not allowed.');
-  }
-
-  return withoutTerminalSemicolon;
-}
 
 function normalizeCell(value: unknown): CellValue {
   if (value === null || typeof value === 'string' || typeof value === 'number') return value;
@@ -67,7 +35,7 @@ export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as ExecuteRequest;
     historyQuery = typeof payload.query === 'string' ? payload.query.trim() : '';
-    const query = validateQuery(payload.query);
+    const query = validateReadOnlyQuery(payload.query);
     const database = (env as unknown as { DB: D1Database }).DB;
     const raw = await database.prepare(query).raw<unknown[]>({ columnNames: true });
     const [columnRow = [], ...resultRows] = raw;

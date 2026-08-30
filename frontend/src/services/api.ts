@@ -88,6 +88,21 @@ export type QueryAnalysis = {
   estimated_complexity: 'Simple' | 'Moderate' | 'Advanced';
   warnings: string[];
 };
+export type QueryPlanStep = {
+  id: number;
+  parent: number;
+  detail: string;
+  operation: 'scan' | 'search' | 'temporary' | 'compound' | 'other';
+  table: string | null;
+  index: string | null;
+  uses_index: boolean;
+};
+export type QueryPlanResponse = {
+  engine: 'SQLite';
+  steps: QueryPlanStep[];
+  summary: { scans: number; index_searches: number; temporary_structures: number };
+  warnings: string[];
+};
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '';
 
@@ -127,6 +142,10 @@ export function fixQuery(query: string, databaseError = '') {
 
 export function analyzeQuery(query: string) {
   return postTutor<QueryAnalysis>('/api/analyze-query', { query });
+}
+
+export function getQueryPlan(query: string) {
+  return postTutor<QueryPlanResponse>('/api/query-plan', { query });
 }
 
 export async function getSchema(): Promise<SchemaResponse> {
