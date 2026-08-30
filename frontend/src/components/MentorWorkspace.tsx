@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Bell, ChevronDown, CircleHelp, Eraser, Lightbulb, Play, Save as SaveIcon, Sparkles, WandSparkles, Workflow } from 'lucide-react';
 
-import { analyzeQuery, clearHistory, deleteSavedQuery, executeQuery, explainQuery, fixQuery, getHistory, getProgress, getSavedQueries, getSchema, saveQuery, setTopicProgress, suggestQuery, type HistoryItem, type ProgressItem, type QueryAnalysis, type QueryResponse, type SavedQueryItem, type SchemaResponse } from '../services/api';
+import { analyzeQuery, analyzeSchema, clearHistory, deleteSavedQuery, executeQuery, explainQuery, fixQuery, getHistory, getProgress, getSavedQueries, getSchema, saveQuery, setTopicProgress, suggestQuery, type HistoryItem, type ProgressItem, type QueryAnalysis, type QueryResponse, type SavedQueryItem, type SchemaResponse } from '../services/api';
 import { ErDiagram } from './ErDiagram';
 import { MentorPanel, type MentorView } from './MentorPanel';
 import { ProductivityContextPanel, ProductivityWorkspace } from './ProductivityWorkspace';
 import { ResultsPanel, type ResultTab } from './ResultsPanel';
 import { SchemaContextPanel, SchemaExplorer, SchemaLoading } from './SchemaExplorer';
+import { SchemaLab, SchemaLabContextPanel } from './SchemaLab';
 import { Sidebar, type WorkspaceView } from './Sidebar';
 import { SqlEditor } from './SqlEditor';
 
@@ -34,6 +35,9 @@ export function MentorWorkspace() {
   const [selectedTable, setSelectedTable] = useState('Student');
   const [schema, setSchema] = useState<SchemaResponse | null>(null);
   const [schemaError, setSchemaError] = useState('');
+  const [customSchema, setCustomSchema] = useState<SchemaResponse | null>(null);
+  const [customSchemaLoading, setCustomSchemaLoading] = useState(false);
+  const [customSchemaError, setCustomSchemaError] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [saved, setSaved] = useState<SavedQueryItem[]>([]);
   const [progress, setProgress] = useState<ProgressItem[]>([]);
@@ -154,6 +158,21 @@ export function MentorWorkspace() {
     }
   };
 
+  const analyzeCustomSchema = async (sql: string) => {
+    setCustomSchemaLoading(true);
+    setCustomSchemaError('');
+    try {
+      const nextSchema = await analyzeSchema(sql);
+      setCustomSchema(nextSchema);
+      setSelectedTable(nextSchema.tables[0]?.name ?? '');
+    } catch (caught) {
+      setCustomSchema(null);
+      setCustomSchemaError(caught instanceof Error ? caught.message : 'The schema could not be analyzed.');
+    } finally {
+      setCustomSchemaLoading(false);
+    }
+  };
+
   const applyMentorSql = (sql: string) => {
     setQuery(sql);
     setResult(null);
@@ -212,6 +231,10 @@ export function MentorWorkspace() {
 
   const completedTopics = new Set(progress.filter((item) => item.completed).map((item) => item.topic_id));
   const schemaView = activeView === 'schema' || activeView === 'er';
+  const navigateTo = (view: WorkspaceView) => {
+    if ((view === 'schema' || view === 'er') && !['Student', 'Course', 'Teacher', 'Department', 'Enrollment'].includes(selectedTable)) setSelectedTable('Student');
+    setActiveView(view);
+  };
 
   return (
     <main className="mentor-grid">
@@ -238,7 +261,7 @@ export function MentorWorkspace() {
         </div>
       </header>
 
-      <Sidebar activeView={activeView} selectedTable={selectedTable} onNavigate={setActiveView} onSelectTable={setSelectedTable} />
+      <Sidebar activeView={activeView} selectedTable={selectedTable} onNavigate={navigateTo} onSelectTable={setSelectedTable} />
 
       {activeView === 'playground' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-2.5">
@@ -264,7 +287,7 @@ export function MentorWorkspace() {
           <SqlEditor value={query} onChange={changeQuery} onRun={runQuery} />
           <ResultsPanel result={result} error={error} running={running} analysis={analysis} analysisLoading={analysisLoading} analysisError={analysisError} activeTab={resultTab} onTabChange={setResultTab} onAnalyze={analyzeCurrentQuery} onFix={fixCurrentQuery} onExportCsv={() => exportResult('csv')} onExportJson={() => exportResult('json')} />
         </div>
-      </section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={setActiveView} onRunQuery={openInPlayground} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
+      </section> : activeView === 'schema-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><SchemaLab analysis={customSchema} loading={customSchemaLoading} error={customSchemaError} selectedTable={selectedTable} onSelectTable={setSelectedTable} onAnalyze={analyzeCustomSchema} /></section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={navigateTo} onRunQuery={openInPlayground} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
 
       {activeView === 'playground' ? <MentorPanel
         view={mentorView}
@@ -273,7 +296,7 @@ export function MentorWorkspace() {
         onAsk={() => suggestCurrentQuery(instruction)}
         onApply={applyMentorSql}
         onReject={() => setMentorView({ kind: 'welcome' })}
-      /> : schemaView ? (schema ? <SchemaContextPanel schema={schema} selectedTable={selectedTable} /> : <aside className="app-mentor border-l border-[var(--border)] bg-[var(--surface)]" />) : <ProductivityContextPanel history={history} saved={saved} completedTopics={completedTopics} />}
+      /> : activeView === 'schema-lab' ? <SchemaLabContextPanel schema={customSchema} /> : schemaView ? (schema ? <SchemaContextPanel schema={schema} selectedTable={selectedTable} /> : <aside className="app-mentor border-l border-[var(--border)] bg-[var(--surface)]" />) : <ProductivityContextPanel history={history} saved={saved} completedTopics={completedTopics} />}
     </main>
   );
 }

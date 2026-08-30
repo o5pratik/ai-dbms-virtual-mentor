@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 5 combines the SQL playground, interactive tutor, schema analysis, ER diagram, persistent practice tools, and an educational query-flow analyzer.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 6 combines the SQL playground, interactive tutor, custom DDL analysis, a pannable ER canvas, persistent practice tools, and educational query-flow analysis.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -12,6 +12,7 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Database:** local SQLite (`database/college.db`) and hosted D1/SQLite CollegeDB
 - **AI tutor:** optional server-side Groq integration with a deterministic built-in tutor fallback
 - **Schema intelligence:** entity, column, primary-key, foreign-key, constraint, and cardinality analysis
+- **Schema Lab:** analyze custom `CREATE TABLE` statements and explore the result as table cards or an interactive ER diagram
 - **Query intelligence:** deterministic logical execution plans with clickable SQL stages, complexity, concepts, and learning tips
 - **Productivity:** D1-backed history, saved SQL, learning progress, practice analytics, and CSV/JSON export
 - **Security:** server-only AI credentials, read-only SQLite connection, statement authorizer, row and execution limits
@@ -94,6 +95,7 @@ Only read-only learning queries are accepted. Destructive statements return a sa
 - `POST /api/suggest` accepts an `instruction` and optional `current_sql`.
 - `POST /api/fix` accepts `query` and an optional `database_error`.
 - `POST /api/analyze-query` accepts `query` and returns its logical execution flow.
+- `POST /api/analyze-schema` accepts SQL DDL and returns detected entities, attributes, constraints, and relationships.
 - `GET /api/schema` returns tables, columns, constraints, row counts, and relationships.
 - `GET/DELETE /api/history` lists or clears the latest 100 query attempts.
 - `GET/POST/DELETE /api/saved` manages reusable read-only queries.
@@ -118,3 +120,4 @@ npm run build
 2. **Completed — Phase 3:** schema analyzer, entity/key detection, ER diagrams, relationships, and cardinality.
 3. **Completed — Phase 4:** query history, saved queries, analytics, export, and learning topics.
 4. **Completed — Phase 5:** query analysis, interactive execution flow, and database messages.
+5. **Completed — Phase 6:** custom DDL schema analysis and pannable, zoomable ER diagrams.
