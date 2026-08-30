@@ -1,6 +1,6 @@
 import unittest
 
-from backend.sql_executor import QueryRejectedError, execute_read_only_query
+from backend.sql_executor import QueryRejectedError, execute_read_only_query, explain_read_only_query
 
 
 class SqlExecutorTests(unittest.TestCase):
@@ -25,6 +25,12 @@ class SqlExecutorTests(unittest.TestCase):
     def test_multiple_statements_are_rejected_by_sqlite(self) -> None:
         with self.assertRaises(Exception):
             execute_read_only_query("SELECT 1; SELECT 2;")
+
+    def test_query_plan_reports_index_and_scan_operations(self) -> None:
+        plan = explain_read_only_query("SELECT * FROM Enrollment INDEXED BY idx_enrollment_semester WHERE semester = 4;")
+        self.assertGreaterEqual(len(plan["steps"]), 1)
+        self.assertTrue(any(step["uses_index"] for step in plan["steps"]))
+        self.assertGreaterEqual(plan["summary"]["index_searches"], 1)
 
 
 if __name__ == "__main__":
