@@ -204,6 +204,24 @@ export function MentorWorkspace() {
     setActiveView('playground');
   };
 
+  const explainLessonQuery = async (sql: string) => {
+    setQuery(sql);
+    setResult(null);
+    setError(null);
+    setAnalysis(null);
+    setAnalysisError(null);
+    setQueryPlan(null);
+    setQueryPlanError(null);
+    setResultTab('output');
+    setActiveView('playground');
+    setMentorView({ kind: 'loading', label: 'Explaining this lesson example' });
+    try {
+      setMentorView({ kind: 'explanation', data: await explainQuery(sql, 'Learning-path example') });
+    } catch (caught) {
+      mentorError(caught);
+    }
+  };
+
   const saveSql = async (sql: string, requestedName?: string) => {
     const table = sql.match(/\bFROM\s+([A-Za-z_]\w*)/i)?.[1] ?? 'SQL';
     await saveQuery(requestedName ?? `${table} query ${saved.length + 1}`, sql);
@@ -298,7 +316,7 @@ export function MentorWorkspace() {
           <SqlEditor value={query} onChange={changeQuery} onRun={runQuery} onFormat={() => changeQuery(formatSql(query))} />
           <ResultsPanel result={result} error={error} running={running} analysis={analysis} analysisLoading={analysisLoading} analysisError={analysisError} queryPlan={queryPlan} queryPlanError={queryPlanError} activeTab={resultTab} onTabChange={setResultTab} onAnalyze={analyzeCurrentQuery} onFix={fixCurrentQuery} onExportCsv={() => exportResult('csv')} onExportJson={() => exportResult('json')} />
         </div>
-      </section> : activeView === 'schema-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><SchemaLab analysis={customSchema} loading={customSchemaLoading} error={customSchemaError} selectedTable={selectedTable} onSelectTable={setSelectedTable} onAnalyze={analyzeCustomSchema} /></section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={navigateTo} onRunQuery={openInPlayground} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
+      </section> : activeView === 'schema-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><SchemaLab analysis={customSchema} loading={customSchemaLoading} error={customSchemaError} selectedTable={selectedTable} onSelectTable={setSelectedTable} onAnalyze={analyzeCustomSchema} /></section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={navigateTo} onRunQuery={openInPlayground} onExplainQuery={explainLessonQuery} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
 
       {activeView === 'playground' ? <MentorPanel
         view={mentorView}
