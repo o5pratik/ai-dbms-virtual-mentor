@@ -31,7 +31,7 @@ export type FixResponse = {
 
 export type SchemaColumn = {
   name: string;
-  type: 'INTEGER' | 'TEXT';
+  type: string;
   nullable: boolean;
   primary_key?: boolean;
   unique?: boolean;
@@ -59,6 +59,7 @@ export type SchemaResponse = {
   tables: SchemaTable[];
   relationships: SchemaRelationship[];
   totals: { tables: number; columns: number; primary_keys: number; foreign_keys: number };
+  warnings?: string[];
 };
 export type HistoryItem = {
   id: number;
@@ -107,8 +108,8 @@ async function postTutor<T>(path: string, body: Record<string, unknown>): Promis
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const payload = (await response.json()) as T & { error?: string };
-  if (!response.ok) throw new Error(payload.error ?? 'The AI Mentor could not complete that request.');
+  const payload = (await response.json()) as T & { error?: string; detail?: string };
+  if (!response.ok) throw new Error(payload.error ?? payload.detail ?? 'The AI Mentor could not complete that request.');
   return payload;
 }
 
@@ -133,6 +134,10 @@ export async function getSchema(): Promise<SchemaResponse> {
   const payload = (await response.json()) as SchemaResponse & { error?: string };
   if (!response.ok) throw new Error(payload.error ?? 'The database schema could not be loaded.');
   return payload;
+}
+
+export function analyzeSchema(sql: string) {
+  return postTutor<SchemaResponse>('/api/analyze-schema', { sql });
 }
 
 async function jsonRequest<T>(path: string, init?: RequestInit): Promise<T> {

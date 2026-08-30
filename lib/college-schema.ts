@@ -8,7 +8,7 @@ Enrollment(student_id INTEGER REFERENCES Student.student_id, course_id INTEGER R
 
 export type SchemaColumn = {
   name: string;
-  type: 'INTEGER' | 'TEXT';
+  type: string;
   nullable: boolean;
   primary_key?: boolean;
   unique?: boolean;

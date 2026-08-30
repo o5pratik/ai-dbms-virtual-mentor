@@ -1,11 +1,12 @@
-import { BarChart3, BookOpen, Boxes, Braces, ChevronDown, Clock3, Database, GraduationCap, LayoutDashboard, Save, Table2, type LucideIcon } from 'lucide-react';
+import { BarChart3, BookOpen, Boxes, Braces, ChevronDown, Clock3, Database, DatabaseZap, GraduationCap, LayoutDashboard, Save, Table2, type LucideIcon } from 'lucide-react';
 
-export type WorkspaceView = 'dashboard' | 'playground' | 'schema' | 'er' | 'history' | 'saved' | 'analytics' | 'topics';
+export type WorkspaceView = 'dashboard' | 'playground' | 'schema' | 'schema-lab' | 'er' | 'history' | 'saved' | 'analytics' | 'topics';
 
 const navigation: Array<{ label: string; icon: LucideIcon; view?: WorkspaceView }> = [
   { label: 'Dashboard', icon: LayoutDashboard, view: 'dashboard' },
   { label: 'SQL Playground', icon: Braces, view: 'playground' as const },
   { label: 'Schema Explorer', icon: Boxes, view: 'schema' as const },
+  { label: 'Schema Lab', icon: DatabaseZap, view: 'schema-lab' as const },
   { label: 'ER Diagram', icon: Database, view: 'er' as const },
   { label: 'Query History', icon: Clock3, view: 'history' },
   { label: 'Saved Queries', icon: Save, view: 'saved' },
@@ -43,8 +44,8 @@ export function Sidebar({ activeView, selectedTable, onNavigate, onSelectTable }
       </div>
 
       <div className="mt-7 rounded-xl border border-[color:rgb(109_141_255_/_18%)] bg-[linear-gradient(145deg,rgb(109_141_255_/_9%),rgb(155_124_255_/_5%))] p-3">
-        <div className="flex items-center gap-2 text-xs font-semibold"><GraduationCap size={15} className="text-[var(--blue-bright)]" /> Phase 4 workspace</div>
-        <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Practice tracking, saved SQL, analytics, and guided topics are active.</p>
+        <div className="flex items-center gap-2 text-xs font-semibold"><GraduationCap size={15} className="text-[var(--blue-bright)]" /> Phase 6 workspace</div>
+        <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Custom schema analysis and an interactive ER canvas are active.</p>
       </div>
     </aside>
   );

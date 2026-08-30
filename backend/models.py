@@ -48,3 +48,7 @@ class DeleteSavedRequest(BaseModel):
 class ProgressRequest(BaseModel):
     topic_id: str = Field(min_length=1, max_length=80)
     completed: bool
+
+
+class SchemaAnalyzeRequest(BaseModel):
+    sql: str = Field(min_length=1, max_length=50_000)
