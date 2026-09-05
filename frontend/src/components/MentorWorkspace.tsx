@@ -13,6 +13,7 @@ import { SchemaContextPanel, SchemaExplorer, SchemaLoading } from './SchemaExplo
 import { SchemaLab, SchemaLabContextPanel } from './SchemaLab';
 import { Sidebar, type WorkspaceView } from './Sidebar';
 import { SqlEditor } from './SqlEditor';
+import { WriteLab, WriteLabContextPanel } from './WriteLab';
 
 const STARTER_QUERY = `SELECT s.name, c.course_name, e.semester
 FROM Student AS s
@@ -279,7 +280,7 @@ export function MentorWorkspace() {
           </div>
           <div className="hidden h-5 w-px bg-[var(--border)] sm:block" />
           <button type="button" className="hidden items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-[11px] text-[var(--muted-bright)] sm:flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--green)]" /> CollegeDB <ChevronDown size={12} />
+            <span className={`h-1.5 w-1.5 rounded-full ${activeView === 'write-lab' ? 'bg-[#f6c76f]' : 'bg-[var(--green)]'}`} /> {activeView === 'write-lab' ? 'PracticeDB' : 'CollegeDB'} <ChevronDown size={12} />
           </button>
         </div>
         <div className="flex items-center gap-1">
@@ -316,7 +317,7 @@ export function MentorWorkspace() {
           <SqlEditor value={query} onChange={changeQuery} onRun={runQuery} onFormat={() => changeQuery(formatSql(query))} />
           <ResultsPanel result={result} error={error} running={running} analysis={analysis} analysisLoading={analysisLoading} analysisError={analysisError} queryPlan={queryPlan} queryPlanError={queryPlanError} activeTab={resultTab} onTabChange={setResultTab} onAnalyze={analyzeCurrentQuery} onFix={fixCurrentQuery} onExportCsv={() => exportResult('csv')} onExportJson={() => exportResult('json')} />
         </div>
-      </section> : activeView === 'schema-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><SchemaLab analysis={customSchema} loading={customSchemaLoading} error={customSchemaError} selectedTable={selectedTable} onSelectTable={setSelectedTable} onAnalyze={analyzeCustomSchema} /></section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={navigateTo} onRunQuery={openInPlayground} onExplainQuery={explainLessonQuery} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
+      </section> : activeView === 'write-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><WriteLab /></section> : activeView === 'schema-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><SchemaLab analysis={customSchema} loading={customSchemaLoading} error={customSchemaError} selectedTable={selectedTable} onSelectTable={setSelectedTable} onAnalyze={analyzeCustomSchema} /></section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={navigateTo} onRunQuery={openInPlayground} onExplainQuery={explainLessonQuery} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
 
       {activeView === 'playground' ? <MentorPanel
         view={mentorView}
@@ -325,7 +326,7 @@ export function MentorWorkspace() {
         onAsk={() => suggestCurrentQuery(instruction)}
         onApply={applyMentorSql}
         onReject={() => setMentorView({ kind: 'welcome' })}
-      /> : activeView === 'schema-lab' ? <SchemaLabContextPanel schema={customSchema} /> : schemaView ? (schema ? <SchemaContextPanel schema={schema} selectedTable={selectedTable} /> : <aside className="app-mentor border-l border-[var(--border)] bg-[var(--surface)]" />) : <ProductivityContextPanel history={history} saved={saved} completedTopics={completedTopics} />}
+      /> : activeView === 'write-lab' ? <WriteLabContextPanel /> : activeView === 'schema-lab' ? <SchemaLabContextPanel schema={customSchema} /> : schemaView ? (schema ? <SchemaContextPanel schema={schema} selectedTable={selectedTable} /> : <aside className="app-mentor border-l border-[var(--border)] bg-[var(--surface)]" />) : <ProductivityContextPanel history={history} saved={saved} completedTopics={completedTopics} />}
     </main>
   );
 }
