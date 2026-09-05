@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 11 adds schema-aware mentor repairs to the safe Write Lab, alongside SQLite file import, selected-statement execution, adaptive curriculum, skill analytics, intelligent editor, real execution plans, custom schema analysis, and persistent practice tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 12 adds device-local PracticeDB recovery and SQL draft autosave, alongside schema-aware mentor repairs, SQLite file import, selected-statement execution, adaptive curriculum, skill analytics, real execution plans, custom schema analysis, and persistent learning tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -134,3 +134,4 @@ npm run build
 8. **Completed — Phase 9:** isolated SQLite write sandbox with reset, export, schema inspection, multi-statement execution, transactions, and timeout protection.
 9. **Completed — Phase 10:** SQLite file import, validation, current-file labeling, and highlighted-statement execution.
 10. **Completed — Phase 11:** PracticeDB error explanations, schema-aware safe corrections, and review-before-apply mentor fixes.
+11. **Completed — Phase 12:** automatic local PracticeDB snapshots, SQL draft recovery, and reset-safe saved state.
