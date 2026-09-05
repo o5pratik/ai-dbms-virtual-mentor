@@ -13,6 +13,7 @@ import {
   FileCode2,
   FileUp,
   FlaskConical,
+  HardDrive,
   Play,
   RotateCcw,
   ShieldCheck,
@@ -23,6 +24,13 @@ import {
 } from 'lucide-react';
 
 import { fixWriteQuery, type FixResponse } from '../services/api';
+import {
+  clearPracticeSnapshot,
+  loadPracticeDraft,
+  loadPracticeSnapshot,
+  savePracticeDraft,
+  savePracticeSnapshot,
+} from '../services/practice-storage';
 
 type SqlValue = number | string | Uint8Array | null;
 type ResultSet = {
@@ -48,6 +56,7 @@ type PendingRequest = {
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
 };
+type SaveState = 'loading' | 'saving' | 'saved' | 'draft' | 'unavailable';
 
 const STARTER_SCRIPT = `-- This database is isolated from CollegeDB.
 CREATE TABLE Project (
@@ -109,12 +118,15 @@ export function WriteLab() {
   const [fixing, setFixing] = useState(false);
   const [fixError, setFixError] = useState('');
   const [lastExecutedSql, setLastExecutedSql] = useState(STARTER_SCRIPT);
+  const [saveState, setSaveState] = useState<SaveState>('loading');
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const selectionReaderRef = useRef<(() => string) | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const runRef = useRef<(script?: string) => void>(() => undefined);
   const pendingRef = useRef(new Map<number, PendingRequest>());
   const requestIdRef = useRef(0);
+  const lastSnapshotRef = useRef({ sql: '', databaseName: '' });
 
   const stopWorker = useCallback((reason?: string) => {
     workerRef.current?.terminate();
@@ -168,19 +180,85 @@ export function WriteLab() {
     [startWorker, stopWorker],
   );
 
+  const persistDatabase = useCallback(
+    async (snapshotSql: string, snapshotName: string) => {
+      setSaveState('saving');
+      try {
+        const exported = await request('export', {}, 15000);
+        if (!exported.ok || !exported.bytes)
+          throw new Error(
+            exported.error ?? 'No database snapshot was returned.',
+          );
+        const savedAt = Date.now();
+        await savePracticeSnapshot({
+          bytes: exported.bytes,
+          databaseName: snapshotName,
+          sql: snapshotSql,
+          savedAt,
+        });
+        savePracticeDraft(snapshotSql, snapshotName);
+        lastSnapshotRef.current = {
+          sql: snapshotSql,
+          databaseName: snapshotName,
+        };
+        setLastSavedAt(savedAt);
+        setSaveState('saved');
+      } catch {
+        setSaveState('unavailable');
+      }
+    },
+    [request],
+  );
+
   useEffect(() => {
     let cancelled = false;
-    request('schema', {}, 15000)
-      .then((response) => {
-        if (cancelled) return;
-        if (!response.ok) throw new Error(response.error);
-        setSchema(response.schema ?? []);
-        setMessage(
-          'PracticeDB is ready. Changes stay inside this browser tab.',
-        );
-        setReady(true);
-      })
-      .catch((caught) => {
+    const initialise = async () => {
+      try {
+        let restored = false;
+        try {
+          const snapshot = await loadPracticeSnapshot();
+          if (snapshot) {
+            const response = await request(
+              'import',
+              { bytes: snapshot.bytes },
+              15000,
+            );
+            if (!response.ok) throw new Error(response.error);
+            if (cancelled) return;
+            const draft = loadPracticeDraft();
+            setSql(draft?.sql ?? snapshot.sql);
+            setDatabaseName(draft?.databaseName ?? snapshot.databaseName);
+            lastSnapshotRef.current = {
+              sql: snapshot.sql,
+              databaseName: snapshot.databaseName,
+            };
+            setSchema(response.schema ?? []);
+            setLastSavedAt(snapshot.savedAt);
+            setSaveState(
+              draft && draft.savedAt > snapshot.savedAt ? 'draft' : 'saved',
+            );
+            setMessage(
+              'PracticeDB and your SQL draft were restored from this device.',
+            );
+            setReady(true);
+            restored = true;
+          }
+        } catch {
+          await clearPracticeSnapshot().catch(() => undefined);
+        }
+
+        if (!restored) {
+          const response = await request('schema', {}, 15000);
+          if (!response.ok) throw new Error(response.error);
+          if (cancelled) return;
+          setSchema(response.schema ?? []);
+          setMessage(
+            'PracticeDB is ready. Local recovery is enabled on this device.',
+          );
+          setReady(true);
+          await persistDatabase(STARTER_SCRIPT, 'PracticeDB');
+        }
+      } catch (caught) {
         if (!cancelled) {
           setError(
             caught instanceof Error
@@ -188,13 +266,37 @@ export function WriteLab() {
               : 'The SQL lab could not start.',
           );
           setMessage('SQLite engine unavailable.');
+          setSaveState('unavailable');
         }
-      });
+      }
+    };
+    void initialise();
     return () => {
       cancelled = true;
       stopWorker();
     };
-  }, [request, stopWorker]);
+  }, [persistDatabase, request, stopWorker]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (
+      lastSnapshotRef.current.sql === sql &&
+      lastSnapshotRef.current.databaseName === databaseName
+    )
+      return;
+    const timer = window.setTimeout(() => {
+      if (
+        lastSnapshotRef.current.sql === sql &&
+        lastSnapshotRef.current.databaseName === databaseName
+      )
+        return;
+      savePracticeDraft(sql, databaseName);
+      setSaveState((current) =>
+        current === 'saving' || current === 'unavailable' ? current : 'draft',
+      );
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [databaseName, ready, sql]);
 
   useEffect(() => {
     const useExample = (event: Event) => {
@@ -229,6 +331,7 @@ export function WriteLab() {
         `${resultCount ? `${resultCount} result set${resultCount === 1 ? '' : 's'}` : 'Script completed'} · last statement changed ${response.changes ?? 0} row(s) · ${(response.elapsedMs ?? 0).toFixed(1)} ms`,
       );
       setReady(true);
+      await persistDatabase(sql, databaseName);
     } catch (caught) {
       setResults([]);
       setError(
@@ -237,6 +340,7 @@ export function WriteLab() {
           : 'SQLite could not execute this script.',
       );
       setActiveTab('messages');
+      await persistDatabase(sql, databaseName);
     } finally {
       setRunning(false);
     }
@@ -313,7 +417,7 @@ export function WriteLab() {
   const reset = async () => {
     if (
       !window.confirm(
-        'Reset PracticeDB and remove every table and row you created in this tab?',
+        'Reset PracticeDB and replace the saved local copy with a clean starter database?',
       )
     )
       return;
@@ -327,6 +431,9 @@ export function WriteLab() {
       setSchema(response.schema ?? []);
       setResults([]);
       setDatabaseName('PracticeDB');
+      setSql(STARTER_SCRIPT);
+      await clearPracticeSnapshot().catch(() => undefined);
+      await persistDatabase(STARTER_SCRIPT, 'PracticeDB');
       setMessage(
         'PracticeDB was reset to the starter Student and Department tables.',
       );
@@ -359,6 +466,7 @@ export function WriteLab() {
       setSchema(response.schema ?? []);
       setResults([]);
       setDatabaseName(file.name);
+      await persistDatabase(sql, file.name);
       setMessage(
         `${file.name} is open in the isolated lab · ${response.schema?.length ?? 0} schema object(s).`,
       );
@@ -401,6 +509,14 @@ export function WriteLab() {
       setActiveTab('messages');
     }
   };
+
+  const saveLabel = {
+    loading: 'Restoring local lab…',
+    saving: 'Saving locally…',
+    saved: 'Database saved locally',
+    draft: 'SQL draft saved',
+    unavailable: 'Local autosave unavailable',
+  }[saveState];
 
   return (
     <>
@@ -463,10 +579,23 @@ export function WriteLab() {
             Export .sqlite
           </button>
         </div>
-        <span className="flex items-center gap-2 rounded-full border border-[color:rgb(72_213_151_/_22%)] bg-[color:rgb(72_213_151_/_7%)] px-3 py-1.5 text-xs font-semibold text-[var(--green)]">
-          <ShieldCheck size={14} />
-          Isolated from CollegeDB
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            title={
+              lastSavedAt
+                ? `Last database snapshot: ${new Date(lastSavedAt).toLocaleString()}`
+                : undefined
+            }
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${saveState === 'unavailable' ? 'border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_6%)] text-[#f6c76f]' : 'border-[color:rgb(109_141_255_/_22%)] bg-[color:rgb(109_141_255_/_7%)] text-[var(--blue-bright)]'}`}
+          >
+            <HardDrive size={14} />
+            {saveLabel}
+          </span>
+          <span className="flex items-center gap-2 rounded-full border border-[color:rgb(72_213_151_/_22%)] bg-[color:rgb(72_213_151_/_7%)] px-3 py-1.5 text-xs font-semibold text-[var(--green)]">
+            <ShieldCheck size={14} />
+            Isolated from CollegeDB
+          </span>
+        </div>
       </div>
 
       <div className="flex h-10 shrink-0 items-center border-b border-[var(--border)] bg-[#0c111a] px-4 text-sm">
@@ -475,7 +604,7 @@ export function WriteLab() {
           {databaseName}
         </span>
         <span className="ml-auto hidden text-xs text-[var(--muted)] sm:inline">
-          SQLite · DDL + DML + transactions · memory only
+          SQLite · DDL + DML + transactions · local recovery
         </span>
       </div>
 
@@ -765,7 +894,7 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Write Lab</p>
-          <p className="text-xs text-[var(--green)]">Phase 11 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 12 · ready</p>
         </div>
       </div>
       <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4">
@@ -809,7 +938,7 @@ export function WriteLabContextPanel() {
         </p>
         <p className="flex items-center gap-2">
           <Box size={15} className="text-[var(--violet)]" />
-          State lasts for this tab only
+          Database restores on this device
         </p>
         <p className="flex items-center gap-2">
           <TimerReset size={15} className="text-[#f6c76f]" />
@@ -817,7 +946,7 @@ export function WriteLabContextPanel() {
         </p>
         <p className="flex items-center gap-2">
           <Download size={15} className="text-[var(--blue-bright)]" />
-          Export before closing
+          Export for a portable backup
         </p>
       </div>
       <div className="mt-3 rounded-xl border border-[color:rgb(109_141_255_/_25%)] bg-[color:rgb(109_141_255_/_5%)] p-4">
