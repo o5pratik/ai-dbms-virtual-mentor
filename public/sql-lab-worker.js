@@ -1,20 +1,6 @@
-import initSqlJs, { type Database, type QueryExecResult, type SqlValue } from 'sql.js';
+/* global initSqlJs */
 
-type Request = {
-  id: number;
-  type: 'execute' | 'reset' | 'schema' | 'export' | 'import';
-  sql?: string;
-  bytes?: ArrayBuffer;
-};
-
-type SchemaObject = { name: string; type: string; sql: string | null };
-
-type WorkerScope = {
-  onmessage: ((event: MessageEvent<Request>) => void) | null;
-  postMessage: (message: unknown, transfer?: Transferable[]) => void;
-};
-
-const scope = self as unknown as WorkerScope;
+importScripts('/sql-wasm.js');
 
 const SEED_SQL = `
 PRAGMA foreign_keys = ON;
@@ -45,9 +31,9 @@ INSERT INTO Student (student_id, name, marks, dept_id) VALUES
 `;
 
 const sqlPromise = initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
-let databasePromise: Promise<Database> | null = null;
+let databasePromise = null;
 
-async function createDatabase(bytes?: ArrayBuffer) {
+async function createDatabase(bytes) {
   const SQL = await sqlPromise;
   const database = new SQL.Database(bytes ? new Uint8Array(bytes) : undefined);
   if (bytes) database.run('PRAGMA foreign_keys = ON;');
@@ -56,7 +42,7 @@ async function createDatabase(bytes?: ArrayBuffer) {
 }
 
 function getDatabase() {
-  databasePromise ??= createDatabase();
+  if (!databasePromise) databasePromise = createDatabase();
   return databasePromise;
 }
 
@@ -67,7 +53,7 @@ async function resetDatabase() {
   return databasePromise;
 }
 
-async function importDatabase(bytes?: ArrayBuffer) {
+async function importDatabase(bytes) {
   if (!bytes || bytes.byteLength < 100) throw new Error('Choose a valid, non-empty SQLite database file.');
   if (bytes.byteLength > 20 * 1024 * 1024) throw new Error('SQLite files are limited to 20 MB in Write Lab.');
   const header = new TextDecoder().decode(new Uint8Array(bytes, 0, 16));
@@ -81,7 +67,7 @@ async function importDatabase(bytes?: ArrayBuffer) {
   return imported;
 }
 
-function readSchema(database: Database): SchemaObject[] {
+function readSchema(database) {
   const result = database.exec(`
     SELECT name, type, sql
     FROM sqlite_schema
@@ -96,46 +82,46 @@ function readSchema(database: Database): SchemaObject[] {
   }));
 }
 
-function serialiseResults(results: QueryExecResult[]) {
+function serialiseResults(results) {
   return results.map((result) => ({
     columns: result.columns,
-    values: result.values.slice(0, 1000) as SqlValue[][],
+    values: result.values.slice(0, 1000),
     rowCount: result.values.length,
     truncated: result.values.length > 1000,
   }));
 }
 
-scope.onmessage = async (event) => {
+self.onmessage = async (event) => {
   const { id, type, sql, bytes } = event.data;
   const startedAt = performance.now();
   try {
     if (type === 'reset') {
       const database = await resetDatabase();
-      scope.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
+      self.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
       return;
     }
 
     if (type === 'import') {
       const database = await importDatabase(bytes);
-      scope.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
+      self.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
       return;
     }
 
     const database = await getDatabase();
     if (type === 'schema') {
-      scope.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
+      self.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
       return;
     }
 
     if (type === 'export') {
-      const bytes = database.export();
-      scope.postMessage({ id, ok: true, bytes: bytes.buffer, elapsedMs: performance.now() - startedAt }, [bytes.buffer]);
+      const exported = database.export();
+      self.postMessage({ id, ok: true, bytes: exported.buffer, elapsedMs: performance.now() - startedAt }, [exported.buffer]);
       return;
     }
 
-    if (!sql?.trim()) throw new Error('Enter one or more SQL statements to run.');
+    if (!sql || !sql.trim()) throw new Error('Enter one or more SQL statements to run.');
     const results = database.exec(sql);
-    scope.postMessage({
+    self.postMessage({
       id,
       ok: true,
       results: serialiseResults(results),
@@ -144,7 +130,7 @@ scope.onmessage = async (event) => {
       elapsedMs: performance.now() - startedAt,
     });
   } catch (caught) {
-    scope.postMessage({
+    self.postMessage({
       id,
       ok: false,
       error: caught instanceof Error ? caught.message : 'SQLite could not execute this script.',
