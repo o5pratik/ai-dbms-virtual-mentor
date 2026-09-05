@@ -1,8 +1,8 @@
 'use client';
 
-import Editor from '@monaco-editor/react';
+import Editor, { type OnMount } from '@monaco-editor/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Box, CheckCircle2, Download, FileCode2, FlaskConical, Play, RotateCcw, ShieldCheck, Table2, TimerReset } from 'lucide-react';
+import { AlertTriangle, Box, CheckCircle2, CodeXml, Download, FileCode2, FileUp, FlaskConical, Play, RotateCcw, ShieldCheck, Table2, TimerReset } from 'lucide-react';
 
 type SqlValue = number | string | Uint8Array | null;
 type ResultSet = { columns: string[]; values: SqlValue[][]; rowCount: number; truncated: boolean };
@@ -17,8 +17,9 @@ type LabResponse = {
   elapsedMs?: number;
   error?: string;
 };
-type RequestType = 'execute' | 'reset' | 'schema' | 'export';
+type RequestType = 'execute' | 'reset' | 'schema' | 'export' | 'import';
 type PendingRequest = { resolve: (response: LabResponse) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> };
+type EditorInstance = Parameters<OnMount>[0];
 
 const STARTER_SCRIPT = `-- This database is isolated from CollegeDB.
 CREATE TABLE Project (
@@ -60,7 +61,12 @@ export function WriteLab() {
   const [activeTab, setActiveTab] = useState<'output' | 'schema' | 'messages'>('output');
   const [ready, setReady] = useState(false);
   const [running, setRunning] = useState(false);
+  const [databaseName, setDatabaseName] = useState('PracticeDB');
+  const [hasSelection, setHasSelection] = useState(false);
   const workerRef = useRef<Worker | null>(null);
+  const editorRef = useRef<EditorInstance | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const runRef = useRef<(script?: string) => void>(() => undefined);
   const pendingRef = useRef(new Map<number, PendingRequest>());
   const requestIdRef = useRef(0);
 
@@ -89,7 +95,7 @@ export function WriteLab() {
     return worker;
   }, [stopWorker]);
 
-  const request = useCallback((type: RequestType, payload: { sql?: string } = {}, timeoutMs = 5000) => new Promise<LabResponse>((resolve, reject) => {
+  const request = useCallback((type: RequestType, payload: { sql?: string; bytes?: ArrayBuffer } = {}, timeoutMs = 5000) => new Promise<LabResponse>((resolve, reject) => {
     const worker = startWorker();
     const id = ++requestIdRef.current;
     const timer = setTimeout(() => {
@@ -97,7 +103,7 @@ export function WriteLab() {
       setMessage('Safety timeout reached. The isolated database was reset.');
     }, timeoutMs);
     pendingRef.current.set(id, { resolve, reject, timer });
-    worker.postMessage({ id, type, ...payload });
+    worker.postMessage({ id, type, ...payload }, payload.bytes ? [payload.bytes] : []);
   }), [startWorker, stopWorker]);
 
   useEffect(() => {
@@ -123,13 +129,13 @@ export function WriteLab() {
     return () => window.removeEventListener('write-lab-example', useExample);
   }, []);
 
-  const run = async () => {
-    if (!sql.trim() || running) return;
+  const run = async (script = sql) => {
+    if (!script.trim() || running) return;
     setRunning(true);
     setError('');
     setActiveTab('output');
     try {
-      const response = await request('execute', { sql });
+      const response = await request('execute', { sql: script });
       if (!response.ok) throw new Error(response.error);
       setResults(response.results ?? []);
       setSchema(response.schema ?? []);
@@ -144,6 +150,21 @@ export function WriteLab() {
       setRunning(false);
     }
   };
+  runRef.current = (script) => { void run(script); };
+
+  const selectedSql = () => {
+    const editor = editorRef.current;
+    const selection = editor?.getSelection();
+    const model = editor?.getModel();
+    if (!selection || !model || selection.isEmpty()) return '';
+    return model.getValueInRange(selection).trim();
+  };
+
+  const runSelection = () => {
+    const selection = selectedSql();
+    if (!selection) { setMessage('Select one or more SQL statements, then choose Run selection.'); return; }
+    runRef.current(selection);
+  };
 
   const reset = async () => {
     if (!window.confirm('Reset PracticeDB and remove every table and row you created in this tab?')) return;
@@ -154,6 +175,7 @@ export function WriteLab() {
       if (!response.ok) throw new Error(response.error);
       setSchema(response.schema ?? []);
       setResults([]);
+      setDatabaseName('PracticeDB');
       setMessage('PracticeDB was reset to the starter Student and Department tables.');
       setActiveTab('schema');
       setReady(true);
@@ -165,17 +187,42 @@ export function WriteLab() {
     }
   };
 
+  const importDatabase = async (file?: File) => {
+    if (!file) return;
+    setRunning(true);
+    setError('');
+    try {
+      if (file.size > 20 * 1024 * 1024) throw new Error('SQLite files are limited to 20 MB in Write Lab.');
+      const bytes = await file.arrayBuffer();
+      const response = await request('import', { bytes }, 15000);
+      if (!response.ok) throw new Error(response.error);
+      setSchema(response.schema ?? []);
+      setResults([]);
+      setDatabaseName(file.name);
+      setMessage(`${file.name} is open in the isolated lab · ${response.schema?.length ?? 0} schema object(s).`);
+      setActiveTab('schema');
+      setReady(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'The SQLite file could not be opened.');
+      setActiveTab('messages');
+    } finally {
+      setRunning(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const exportDatabase = async () => {
     try {
       const response = await request('export', {}, 15000);
       if (!response.ok || !response.bytes) throw new Error(response.error ?? 'No database file was returned.');
       const url = URL.createObjectURL(new Blob([response.bytes], { type: 'application/vnd.sqlite3' }));
       const anchor = document.createElement('a');
+      const exportName = `${databaseName.replace(/\.(db|sqlite|sqlite3)$/i, '').replace(/[^a-z0-9_-]+/gi, '-') || 'practice-db'}-edited.sqlite`;
       anchor.href = url;
-      anchor.download = 'practice-db.sqlite';
+      anchor.download = exportName;
       anchor.click();
       URL.revokeObjectURL(url);
-      setMessage('PracticeDB was exported as practice-db.sqlite.');
+      setMessage(`${exportName} was downloaded.`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The database could not be exported.');
       setActiveTab('messages');
@@ -185,7 +232,10 @@ export function WriteLab() {
   return <>
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={run} disabled={!ready || running || !sql.trim()} className="flex items-center gap-2 rounded-lg bg-[linear-gradient(135deg,#29b67f,#438cff)] px-3.5 py-2 text-sm font-bold text-white shadow-[0_5px_16px_rgb(72_213_151_/_16%)] disabled:cursor-not-allowed disabled:opacity-50"><Play size={14} fill="currentColor" />{running ? 'Running…' : 'Run script'}<kbd className="ml-1 rounded border border-white/20 bg-black/10 px-1 py-0.5 font-mono text-xs font-medium">Ctrl ↵</kbd></button>
+        <input ref={fileInputRef} type="file" accept=".db,.sqlite,.sqlite3,application/vnd.sqlite3" className="hidden" onChange={(event) => void importDatabase(event.target.files?.[0])} />
+        <button type="button" onClick={() => void run()} disabled={!ready || running || !sql.trim()} className="flex items-center gap-2 rounded-lg bg-[linear-gradient(135deg,#29b67f,#438cff)] px-3.5 py-2 text-sm font-bold text-white shadow-[0_5px_16px_rgb(72_213_151_/_16%)] disabled:cursor-not-allowed disabled:opacity-50"><Play size={14} fill="currentColor" />{running ? 'Running…' : 'Run script'}<kbd className="ml-1 rounded border border-white/20 bg-black/10 px-1 py-0.5 font-mono text-xs font-medium">Ctrl ↵</kbd></button>
+        <button type="button" onClick={runSelection} disabled={!ready || running || !hasSelection} title="Run only the highlighted SQL" className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><CodeXml size={14} />Run selection</button>
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={running} className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40"><FileUp size={14} />Open SQLite</button>
         <button type="button" onClick={reset} disabled={running} className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40"><RotateCcw size={14} />Reset database</button>
         <button type="button" onClick={exportDatabase} disabled={!ready || running} className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"><Download size={14} />Export .sqlite</button>
       </div>
@@ -193,13 +243,13 @@ export function WriteLab() {
     </div>
 
     <div className="flex h-10 shrink-0 items-center border-b border-[var(--border)] bg-[#0c111a] px-4 text-sm">
-      <span className="flex h-full items-center border-b-2 border-[var(--green)] px-2 font-mono text-[var(--muted-bright)]"><span className="mr-2 h-2 w-2 rounded-sm bg-[var(--green)]" />write-lab.sql</span>
+      <span className="flex h-full items-center border-b-2 border-[var(--green)] px-2 font-mono text-[var(--muted-bright)]"><span className="mr-2 h-2 w-2 rounded-sm bg-[var(--green)]" />{databaseName}</span>
       <span className="ml-auto hidden text-xs text-[var(--muted)] sm:inline">SQLite · DDL + DML + transactions · memory only</span>
     </div>
 
     <div className="grid min-h-0 flex-1 grid-rows-[minmax(280px,1fr)_minmax(220px,0.75fr)] overflow-hidden">
       <div className="min-h-0 overflow-hidden bg-[#0b1019]">
-        <Editor height="100%" defaultLanguage="sql" theme="vs-dark" value={sql} onChange={(value) => setSql(value ?? '')} onMount={(editor, monaco) => editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run)} loading={<div className="flex h-full items-center justify-center text-sm text-[var(--muted)]">Loading SQL editor…</div>} options={{ automaticLayout: true, minimap: { enabled: false }, fontFamily: 'var(--font-mono)', fontSize: 14, lineHeight: 23, padding: { top: 16, bottom: 16 }, scrollBeyondLastLine: false, wordWrap: 'on', tabSize: 2, bracketPairColorization: { enabled: true }, renderLineHighlight: 'all' }} />
+        <Editor height="100%" defaultLanguage="sql" theme="vs-dark" value={sql} onChange={(value) => setSql(value ?? '')} onMount={(editor, monaco) => { editorRef.current = editor; editor.onDidChangeCursorSelection(({ selection }) => setHasSelection(!selection.isEmpty())); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => runRef.current(selectedSql() || undefined)); }} loading={<div className="flex h-full items-center justify-center text-sm text-[var(--muted)]">Loading SQL editor…</div>} options={{ automaticLayout: true, minimap: { enabled: false }, fontFamily: 'var(--font-mono)', fontSize: 14, lineHeight: 23, padding: { top: 16, bottom: 16 }, scrollBeyondLastLine: false, wordWrap: 'on', tabSize: 2, bracketPairColorization: { enabled: true }, renderLineHighlight: 'all' }} />
       </div>
 
       <div className="flex min-h-0 flex-col border-t border-[var(--border)] bg-[var(--surface)]">
@@ -219,10 +269,10 @@ export function WriteLab() {
 
 export function WriteLabContextPanel() {
   return <aside className="app-mentor overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)] p-4">
-    <div className="flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:rgb(72_213_151_/_10%)] text-[var(--green)]"><FlaskConical size={18} /></div><div><p className="text-sm font-bold">Write Lab</p><p className="text-xs text-[var(--green)]">Phase 9 · ready</p></div></div>
+    <div className="flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:rgb(72_213_151_/_10%)] text-[var(--green)]"><FlaskConical size={18} /></div><div><p className="text-sm font-bold">Write Lab</p><p className="text-xs text-[var(--green)]">Phase 10 · ready</p></div></div>
     <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4"><ShieldCheck size={18} className="text-[var(--green)]" /><h2 className="mt-3 text-sm font-bold">Safe SQL sandbox</h2><p className="mt-2 text-sm leading-6 text-[var(--muted-bright)]">Create, alter, insert, update, delete, drop, and use transactions in a disposable SQLite database. CollegeDB is never modified.</p></div>
     <div className="mt-3 rounded-xl border border-[var(--border)] p-4"><p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Try an example</p><div className="mt-3 space-y-2">{EXAMPLES.map((example) => <button key={example.label} type="button" onClick={() => window.dispatchEvent(new CustomEvent('write-lab-example', { detail: example.sql }))} className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[#0b1018] px-3 py-2.5 text-left text-sm text-[var(--muted-bright)] hover:border-[var(--border-bright)] hover:text-[var(--text)]"><FileCode2 size={14} className="text-[var(--blue-bright)]" />{example.label}</button>)}</div></div>
-    <div className="mt-3 space-y-2 rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--muted-bright)]"><p className="flex items-center gap-2"><Box size={15} className="text-[var(--violet)]" />State lasts for this tab only</p><p className="flex items-center gap-2"><TimerReset size={15} className="text-[#f6c76f]" />5-second safety limit</p><p className="flex items-center gap-2"><Download size={15} className="text-[var(--blue-bright)]" />Export before closing</p></div>
+    <div className="mt-3 space-y-2 rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--muted-bright)]"><p className="flex items-center gap-2"><FileUp size={15} className="text-[var(--green)]" />Open SQLite files up to 20 MB</p><p className="flex items-center gap-2"><CodeXml size={15} className="text-[var(--blue-bright)]" />Run highlighted statements</p><p className="flex items-center gap-2"><Box size={15} className="text-[var(--violet)]" />State lasts for this tab only</p><p className="flex items-center gap-2"><TimerReset size={15} className="text-[#f6c76f]" />5-second safety limit</p><p className="flex items-center gap-2"><Download size={15} className="text-[var(--blue-bright)]" />Export before closing</p></div>
     <div className="mt-3 rounded-xl border border-dashed border-[color:rgb(246_199_111_/_30%)] bg-[color:rgb(246_199_111_/_5%)] p-3 text-xs leading-5 text-[var(--muted-bright)]"><strong className="text-[#f6c76f]">SQLite only.</strong> MySQL, PostgreSQL, Oracle, and SQL Server procedures or vendor-specific syntax need their own database engine.</div>
   </aside>;
 }

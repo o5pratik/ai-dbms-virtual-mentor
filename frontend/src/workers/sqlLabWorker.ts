@@ -2,8 +2,9 @@ import initSqlJs, { type Database, type QueryExecResult, type SqlValue } from 's
 
 type Request = {
   id: number;
-  type: 'execute' | 'reset' | 'schema' | 'export';
+  type: 'execute' | 'reset' | 'schema' | 'export' | 'import';
   sql?: string;
+  bytes?: ArrayBuffer;
 };
 
 type SchemaObject = { name: string; type: string; sql: string | null };
@@ -43,12 +44,14 @@ INSERT INTO Student (student_id, name, marks, dept_id) VALUES
   (4, 'Meera Iyer', 81, 3);
 `;
 
+const sqlPromise = initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
 let databasePromise: Promise<Database> | null = null;
 
-async function createDatabase() {
-  const SQL = await initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
-  const database = new SQL.Database();
-  database.run(SEED_SQL);
+async function createDatabase(bytes?: ArrayBuffer) {
+  const SQL = await sqlPromise;
+  const database = new SQL.Database(bytes ? new Uint8Array(bytes) : undefined);
+  if (bytes) database.run('PRAGMA foreign_keys = ON;');
+  else database.run(SEED_SQL);
   return database;
 }
 
@@ -62,6 +65,20 @@ async function resetDatabase() {
   current.close();
   databasePromise = createDatabase();
   return databasePromise;
+}
+
+async function importDatabase(bytes?: ArrayBuffer) {
+  if (!bytes || bytes.byteLength < 100) throw new Error('Choose a valid, non-empty SQLite database file.');
+  if (bytes.byteLength > 20 * 1024 * 1024) throw new Error('SQLite files are limited to 20 MB in Write Lab.');
+  const header = new TextDecoder().decode(new Uint8Array(bytes, 0, 16));
+  if (header !== 'SQLite format 3\0') throw new Error('This is not a valid SQLite 3 database file.');
+
+  const imported = await createDatabase(bytes);
+  imported.exec('SELECT COUNT(*) FROM sqlite_schema;');
+  const current = await getDatabase();
+  current.close();
+  databasePromise = Promise.resolve(imported);
+  return imported;
 }
 
 function readSchema(database: Database): SchemaObject[] {
@@ -89,11 +106,17 @@ function serialiseResults(results: QueryExecResult[]) {
 }
 
 scope.onmessage = async (event) => {
-  const { id, type, sql } = event.data;
+  const { id, type, sql, bytes } = event.data;
   const startedAt = performance.now();
   try {
     if (type === 'reset') {
       const database = await resetDatabase();
+      scope.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
+      return;
+    }
+
+    if (type === 'import') {
+      const database = await importDatabase(bytes);
       scope.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
       return;
     }
