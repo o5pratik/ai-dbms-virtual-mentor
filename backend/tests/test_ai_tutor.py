@@ -67,6 +67,25 @@ ORDER BY s.name;"""
         self.assertNotIn("WHERE", response["corrected_sql"])
         self.assertIn("ORDER BY s.name", response["corrected_sql"])
 
+    def test_write_lab_fix_repairs_data_statement_keywords(self) -> None:
+        response = fix_query(
+            "INSRT INOT Student (student_id, name) VALUS (5, 'Riya');",
+            'near "INSRT": syntax error',
+            "write-lab",
+            "CREATE TABLE Student (student_id INTEGER, name TEXT);",
+        )
+        self.assertTrue(response["has_error"])
+        self.assertEqual(response["corrected_sql"], "INSERT INTO Student (student_id, name) VALUES (5, 'Riya');")
+
+    def test_write_lab_fix_uses_current_schema(self) -> None:
+        response = fix_query(
+            "SELECT title FROM Projec;",
+            "no such table: Projec",
+            "write-lab",
+            "CREATE TABLE Project (project_id INTEGER, title TEXT);",
+        )
+        self.assertEqual(response["corrected_sql"], "SELECT title FROM Project;")
+
 
 if __name__ == "__main__":
     unittest.main()

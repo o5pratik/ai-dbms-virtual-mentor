@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 10 adds SQLite file import and selected-statement execution to the safe Write Lab, adaptive curriculum, skill analytics, intelligent editor, real execution plans, interactive tutor, custom schema analysis, and persistent practice tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 11 adds schema-aware mentor repairs to the safe Write Lab, alongside SQLite file import, selected-statement execution, adaptive curriculum, skill analytics, intelligent editor, real execution plans, custom schema analysis, and persistent practice tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -98,7 +98,7 @@ Only read-only learning queries are accepted. Destructive statements return a sa
 
 - `POST /api/explain` accepts `query` and an optional `result_summary`.
 - `POST /api/suggest` accepts an `instruction` and optional `current_sql`.
-- `POST /api/fix` accepts `query` and an optional `database_error`.
+- `POST /api/fix` accepts `query`, an optional `database_error`, and optional Write Lab `mode` and `schema` context.
 - `POST /api/analyze-query` accepts `query` and returns its logical execution flow.
 - `POST /api/analyze-schema` accepts SQL DDL and returns detected entities, attributes, constraints, and relationships.
 - `POST /api/query-plan` accepts a read-only query and returns SQLite planner operations.
@@ -133,3 +133,4 @@ npm run build
 7. **Completed — Phase 8:** expanded curriculum, interactive quick checks, and adaptive skill analytics.
 8. **Completed — Phase 9:** isolated SQLite write sandbox with reset, export, schema inspection, multi-statement execution, transactions, and timeout protection.
 9. **Completed — Phase 10:** SQLite file import, validation, current-file labeling, and highlighted-statement execution.
+10. **Completed — Phase 11:** PracticeDB error explanations, schema-aware safe corrections, and review-before-apply mentor fixes.
