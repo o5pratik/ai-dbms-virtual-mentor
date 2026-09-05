@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 8 combines an adaptive SQL curriculum, skill analytics, an intelligent editor, real SQLite execution plans, the interactive tutor, custom schema analysis, and persistent practice tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 9 adds a safe, isolated SQLite Write Lab to the adaptive curriculum, skill analytics, intelligent editor, real execution plans, interactive tutor, custom schema analysis, and persistent practice tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -19,6 +19,7 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Adaptive learning:** 12 lessons across SQL basics, querying, database design, and transactions with runnable challenges, hints, quick checks, and mentor explanations
 - **Skill analytics:** concept mastery, weak-area recommendations, practice coverage, and recurring error patterns derived from query history
 - **Productivity:** D1-backed history, saved SQL, learning progress, practice analytics, and CSV/JSON export
+- **Write Lab:** browser-isolated SQLite for DDL, DML, multi-statement scripts, transactions, schema inspection, reset, timeout protection, and `.sqlite` export
 - **Security:** server-only AI credentials, read-only SQLite connection, statement authorizer, row and execution limits
 
 The web entry points are in `app/` for the Sites-compatible Vite runtime. Reusable product UI and services are in `frontend/src/`. Hosted API routes live under `app/api/`; matching local FastAPI implementations are separated under `backend/`.
@@ -112,6 +113,8 @@ Each response includes a `source` field (`groq` or `built-in`) so the interface 
 
 Local CollegeDB is created and seeded automatically when FastAPI starts. The hosted D1 database is initialized through `drizzle/0000_college_schema.sql` during deployment. Both contain `Student`, `Course`, `Teacher`, `Department`, and `Enrollment`.
 
+The Write Lab uses a separate temporary `PracticeDB` inside a Web Worker. It can run SQLite `CREATE`, `ALTER`, `DROP`, `INSERT`, `UPDATE`, `DELETE`, transaction, PRAGMA, and multi-statement scripts without modifying CollegeDB. Its state lasts for the current tab unless exported. Vendor-specific MySQL, PostgreSQL, Oracle, or SQL Server procedures still require their matching database engine.
+
 ## Tests and build
 
 ```powershell
@@ -128,3 +131,4 @@ npm run build
 5. **Completed — Phase 6:** custom DDL schema analysis and pannable, zoomable ER diagrams.
 6. **Completed — Phase 7:** schema-aware SQL editing and real SQLite execution plans.
 7. **Completed — Phase 8:** expanded curriculum, interactive quick checks, and adaptive skill analytics.
+8. **Completed — Phase 9:** isolated SQLite write sandbox with reset, export, schema inspection, multi-statement execution, transactions, and timeout protection.
