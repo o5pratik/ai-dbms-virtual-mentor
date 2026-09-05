@@ -82,7 +82,7 @@ export function WriteLab() {
 
   const startWorker = useCallback(() => {
     if (workerRef.current) return workerRef.current;
-    const worker = new Worker(new URL('../workers/sqlLabWorker.ts', import.meta.url), { type: 'module' });
+    const worker = new Worker('/sql-lab-worker.js');
     worker.onmessage = (event: MessageEvent<LabResponse>) => {
       const pending = pendingRef.current.get(event.data.id);
       if (!pending) return;
