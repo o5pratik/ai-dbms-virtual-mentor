@@ -9,11 +9,13 @@ export type PracticeDraft = Pick<
   PracticeSnapshot,
   'databaseName' | 'sql' | 'savedAt'
 >;
+export type PracticeCheckpoint = PracticeSnapshot & { label: string };
 
 const DATABASE_NAME = 'ai-dbms-mentor';
 const DATABASE_VERSION = 1;
 const STORE_NAME = 'practice-snapshots';
 const ACTIVE_SNAPSHOT = 'active';
+const UNDO_CHECKPOINT = 'undo';
 const DRAFT_KEY = 'ai-dbms-mentor:practice-draft';
 
 function openStorage() {
@@ -73,6 +75,26 @@ export async function loadPracticeSnapshot() {
 export async function savePracticeSnapshot(snapshot: PracticeSnapshot) {
   await transactStorage<IDBValidKey>('readwrite', (store) =>
     store.put(snapshot, ACTIVE_SNAPSHOT),
+  );
+}
+
+export async function loadPracticeCheckpoint() {
+  const checkpoint = await transactStorage<PracticeCheckpoint | undefined>(
+    'readonly',
+    (store) => store.get(UNDO_CHECKPOINT),
+  );
+  return checkpoint ?? null;
+}
+
+export async function savePracticeCheckpoint(checkpoint: PracticeCheckpoint) {
+  await transactStorage<IDBValidKey>('readwrite', (store) =>
+    store.put(checkpoint, UNDO_CHECKPOINT),
+  );
+}
+
+export async function clearPracticeCheckpoint() {
+  await transactStorage<undefined>('readwrite', (store) =>
+    store.delete(UNDO_CHECKPOINT),
   );
 }
 

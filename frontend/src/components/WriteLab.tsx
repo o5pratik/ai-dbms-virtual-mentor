@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Table2,
   TimerReset,
+  Undo2,
   WandSparkles,
   X,
 } from 'lucide-react';
@@ -26,9 +27,12 @@ import {
 import { fixWriteQuery, type FixResponse } from '../services/api';
 import {
   clearPracticeSnapshot,
+  clearPracticeCheckpoint,
+  loadPracticeCheckpoint,
   loadPracticeDraft,
   loadPracticeSnapshot,
   savePracticeDraft,
+  savePracticeCheckpoint,
   savePracticeSnapshot,
 } from '../services/practice-storage';
 
@@ -120,6 +124,9 @@ export function WriteLab() {
   const [lastExecutedSql, setLastExecutedSql] = useState(STARTER_SCRIPT);
   const [saveState, setSaveState] = useState<SaveState>('loading');
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [undoAvailable, setUndoAvailable] = useState(false);
+  const [undoLabel, setUndoLabel] = useState('');
+  const [undoing, setUndoing] = useState(false);
   const workerRef = useRef<Worker | null>(null);
   const selectionReaderRef = useRef<(() => string) | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -210,12 +217,39 @@ export function WriteLab() {
     [request],
   );
 
+  const createCheckpoint = useCallback(
+    async (label: string, checkpointSql: string, checkpointName: string) => {
+      try {
+        const exported = await request('export', {}, 15000);
+        if (!exported.ok || !exported.bytes)
+          throw new Error(exported.error ?? 'No checkpoint was returned.');
+        await savePracticeCheckpoint({
+          bytes: exported.bytes,
+          databaseName: checkpointName,
+          sql: checkpointSql,
+          savedAt: Date.now(),
+          label,
+        });
+        setUndoLabel(label);
+        setUndoAvailable(true);
+      } catch {
+        setUndoAvailable(false);
+        setUndoLabel('');
+      }
+    },
+    [request],
+  );
+
   useEffect(() => {
     let cancelled = false;
     const initialise = async () => {
       try {
         let restored = false;
         try {
+          const checkpoint = await loadPracticeCheckpoint();
+          if (cancelled) return;
+          setUndoAvailable(Boolean(checkpoint));
+          setUndoLabel(checkpoint?.label ?? '');
           const snapshot = await loadPracticeSnapshot();
           if (snapshot) {
             const response = await request(
@@ -322,6 +356,13 @@ export function WriteLab() {
     setLastExecutedSql(script);
     setActiveTab('output');
     try {
+      const statementType =
+        script
+          .match(
+            /\b(SELECT|WITH|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|REPLACE|PRAGMA|BEGIN)\b/i,
+          )?.[1]
+          ?.toUpperCase() ?? 'SQL';
+      await createCheckpoint(`Before ${statementType} run`, sql, databaseName);
       const response = await request('execute', { sql: script });
       if (!response.ok) throw new Error(response.error);
       setResults(response.results ?? []);
@@ -414,6 +455,49 @@ export function WriteLab() {
     }
   };
 
+  const undoLastRun = async () => {
+    if (!undoAvailable || running || undoing) return;
+    setUndoing(true);
+    setRunning(true);
+    setError('');
+    setFix(null);
+    setFixError('');
+    try {
+      const checkpoint = await loadPracticeCheckpoint();
+      if (!checkpoint)
+        throw new Error(
+          'The previous PracticeDB checkpoint is no longer available.',
+        );
+      const response = await request(
+        'import',
+        { bytes: checkpoint.bytes },
+        15000,
+      );
+      if (!response.ok) throw new Error(response.error);
+      setSql(checkpoint.sql);
+      setDatabaseName(checkpoint.databaseName);
+      setSchema(response.schema ?? []);
+      setResults([]);
+      await persistDatabase(checkpoint.sql, checkpoint.databaseName);
+      await clearPracticeCheckpoint();
+      setUndoAvailable(false);
+      setUndoLabel('');
+      setMessage(`Restored checkpoint: ${checkpoint.label}.`);
+      setActiveTab('schema');
+      setReady(true);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'The previous database state could not be restored.',
+      );
+      setActiveTab('messages');
+    } finally {
+      setUndoing(false);
+      setRunning(false);
+    }
+  };
+
   const reset = async () => {
     if (
       !window.confirm(
@@ -426,6 +510,7 @@ export function WriteLab() {
     setFix(null);
     setFixError('');
     try {
+      await createCheckpoint('Before database reset', sql, databaseName);
       const response = await request('reset', {}, 15000);
       if (!response.ok) throw new Error(response.error);
       setSchema(response.schema ?? []);
@@ -461,6 +546,7 @@ export function WriteLab() {
       if (file.size > 20 * 1024 * 1024)
         throw new Error('SQLite files are limited to 20 MB in Write Lab.');
       const bytes = await file.arrayBuffer();
+      await createCheckpoint(`Before opening ${file.name}`, sql, databaseName);
       const response = await request('import', { bytes }, 15000);
       if (!response.ok) throw new Error(response.error);
       setSchema(response.schema ?? []);
@@ -559,6 +645,16 @@ export function WriteLab() {
           >
             <FileUp size={14} />
             Open SQLite
+          </button>
+          <button
+            type="button"
+            onClick={() => void undoLastRun()}
+            disabled={!ready || running || !undoAvailable}
+            title={undoLabel || 'A checkpoint appears after your first run'}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Undo2 size={14} />
+            {undoing ? 'Restoring…' : 'Undo last run'}
           </button>
           <button
             type="button"
@@ -894,7 +990,7 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Write Lab</p>
-          <p className="text-xs text-[var(--green)]">Phase 12 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 13 · ready</p>
         </div>
       </div>
       <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4">
@@ -939,6 +1035,10 @@ export function WriteLabContextPanel() {
         <p className="flex items-center gap-2">
           <Box size={15} className="text-[var(--violet)]" />
           Database restores on this device
+        </p>
+        <p className="flex items-center gap-2">
+          <Undo2 size={15} className="text-[var(--blue-bright)]" />
+          Undo the last run, reset, or import
         </p>
         <p className="flex items-center gap-2">
           <TimerReset size={15} className="text-[#f6c76f]" />
