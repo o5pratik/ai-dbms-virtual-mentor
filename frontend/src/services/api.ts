@@ -58,7 +58,12 @@ export type SchemaResponse = {
   engine: string;
   tables: SchemaTable[];
   relationships: SchemaRelationship[];
-  totals: { tables: number; columns: number; primary_keys: number; foreign_keys: number };
+  totals: {
+    tables: number;
+    columns: number;
+    primary_keys: number;
+    foreign_keys: number;
+  };
   warnings?: string[];
 };
 export type HistoryItem = {
@@ -70,9 +75,26 @@ export type HistoryItem = {
   error: string | null;
   executed_at: string;
 };
-export type SavedQueryItem = { id: number; name: string; query: string; created_at: string };
-export type ProgressItem = { topic_id: string; completed: number; updated_at: string };
-export type QueryStepType = 'source' | 'join' | 'filter' | 'group' | 'having' | 'project' | 'sort' | 'limit';
+export type SavedQueryItem = {
+  id: number;
+  name: string;
+  query: string;
+  created_at: string;
+};
+export type ProgressItem = {
+  topic_id: string;
+  completed: number;
+  updated_at: string;
+};
+export type QueryStepType =
+  | 'source'
+  | 'join'
+  | 'filter'
+  | 'group'
+  | 'having'
+  | 'project'
+  | 'sort'
+  | 'limit';
 export type QueryFlowStep = {
   id: string;
   type: QueryStepType;
@@ -100,7 +122,11 @@ export type QueryPlanStep = {
 export type QueryPlanResponse = {
   engine: 'SQLite';
   steps: QueryPlanStep[];
-  summary: { scans: number; index_searches: number; temporary_structures: number };
+  summary: {
+    scans: number;
+    index_searches: number;
+    temporary_structures: number;
+  };
   warnings: string[];
 };
 
@@ -113,31 +139,65 @@ export async function executeQuery(query: string): Promise<QueryResponse> {
     body: JSON.stringify({ query }),
   });
   const payload = (await response.json()) as QueryResponse;
-  if (!response.ok) throw new Error(payload.error ?? 'The query could not be executed.');
+  if (!response.ok)
+    throw new Error(payload.error ?? 'The query could not be executed.');
   return payload;
 }
 
-async function postTutor<T>(path: string, body: Record<string, unknown>): Promise<T> {
+async function postTutor<T>(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const payload = (await response.json()) as T & { error?: string; detail?: string };
-  if (!response.ok) throw new Error(payload.error ?? payload.detail ?? 'The AI Mentor could not complete that request.');
+  const payload = (await response.json()) as T & {
+    error?: string;
+    detail?: string;
+  };
+  if (!response.ok)
+    throw new Error(
+      payload.error ??
+        payload.detail ??
+        'The AI Mentor could not complete that request.',
+    );
   return payload;
 }
 
 export function explainQuery(query: string, resultSummary = '') {
-  return postTutor<ExplanationResponse>('/api/explain', { query, result_summary: resultSummary });
+  return postTutor<ExplanationResponse>('/api/explain', {
+    query,
+    result_summary: resultSummary,
+  });
 }
 
 export function suggestQuery(currentSql: string, instruction = '') {
-  return postTutor<SuggestionResponse>('/api/suggest', { current_sql: currentSql, instruction });
+  return postTutor<SuggestionResponse>('/api/suggest', {
+    current_sql: currentSql,
+    instruction,
+  });
 }
 
 export function fixQuery(query: string, databaseError = '') {
-  return postTutor<FixResponse>('/api/fix', { query, database_error: databaseError });
+  return postTutor<FixResponse>('/api/fix', {
+    query,
+    database_error: databaseError,
+  });
+}
+
+export function fixWriteQuery(
+  query: string,
+  databaseError: string,
+  schema = '',
+) {
+  return postTutor<FixResponse>('/api/fix', {
+    query,
+    database_error: databaseError,
+    mode: 'write-lab',
+    schema,
+  });
 }
 
 export function analyzeQuery(query: string) {
@@ -150,8 +210,13 @@ export function getQueryPlan(query: string) {
 
 export async function getSchema(): Promise<SchemaResponse> {
   const response = await fetch(`${API_BASE_URL}/api/schema`);
-  const payload = (await response.json()) as SchemaResponse & { error?: string };
-  if (!response.ok) throw new Error(payload.error ?? 'The database schema could not be loaded.');
+  const payload = (await response.json()) as SchemaResponse & {
+    error?: string;
+  };
+  if (!response.ok)
+    throw new Error(
+      payload.error ?? 'The database schema could not be loaded.',
+    );
   return payload;
 }
 
@@ -162,7 +227,8 @@ export function analyzeSchema(sql: string) {
 async function jsonRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, init);
   const payload = (await response.json()) as T & { error?: string };
-  if (!response.ok) throw new Error(payload.error ?? 'The request could not be completed.');
+  if (!response.ok)
+    throw new Error(payload.error ?? 'The request could not be completed.');
   return payload;
 }
 
@@ -171,7 +237,9 @@ export async function getHistory() {
 }
 
 export async function clearHistory() {
-  return jsonRequest<{ success: boolean }>('/api/history', { method: 'DELETE' });
+  return jsonRequest<{ success: boolean }>('/api/history', {
+    method: 'DELETE',
+  });
 }
 
 export async function getSavedQueries() {
@@ -179,11 +247,19 @@ export async function getSavedQueries() {
 }
 
 export async function saveQuery(name: string, query: string) {
-  return jsonRequest<{ success: boolean; id: number }>('/api/saved', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, query }) });
+  return jsonRequest<{ success: boolean; id: number }>('/api/saved', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, query }),
+  });
 }
 
 export async function deleteSavedQuery(id: number) {
-  return jsonRequest<{ success: boolean }>('/api/saved', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+  return jsonRequest<{ success: boolean }>('/api/saved', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
 }
 
 export async function getProgress() {
@@ -191,5 +267,9 @@ export async function getProgress() {
 }
 
 export async function setTopicProgress(topicId: string, completed: boolean) {
-  return jsonRequest<{ success: boolean }>('/api/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic_id: topicId, completed }) });
+  return jsonRequest<{ success: boolean }>('/api/progress', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ topic_id: topicId, completed }),
+  });
 }

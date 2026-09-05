@@ -130,7 +130,7 @@ ORDER BY s.marks DESC;"""
     return {**response, "source": "groq"} if response and response.get("sql") else fallback
 
 
-def fix_query(query: str, database_error: str = "") -> dict[str, Any]:
+def fix_query(query: str, database_error: str = "", mode: str = "playground", schema: str = "") -> dict[str, Any]:
     corrected = query.strip()
     replacements = [
         (r"\bSELEC\b", "SELECT", "Corrected SELEC to SELECT."),
@@ -141,11 +141,29 @@ def fix_query(query: str, database_error: str = "") -> dict[str, Any]:
         (r"\bWHER\b", "WHERE", "Corrected WHER to WHERE."),
         (r"\bODER\s+BY\b", "ORDER BY", "Corrected ODER BY to ORDER BY."),
         (r"\bGROP\s+BY\b", "GROUP BY", "Corrected GROP BY to GROUP BY."),
-        (r"\bStudnt\b", "Student", "Corrected the table name to Student."),
-        (r"\bEnrolment\b", "Enrollment", "Corrected the table name to Enrollment."),
-        (r"\bDepartmnt\b", "Department", "Corrected the table name to Department."),
-        (r"\bTecher\b", "Teacher", "Corrected the table name to Teacher."),
     ]
+    if mode == "write-lab":
+        replacements.extend([
+            (r"\b(?:INSRT|ISERT)\b", "INSERT", "Corrected the INSERT keyword."),
+            (r"\bINOT\b", "INTO", "Corrected INOT to INTO."),
+            (r"\b(?:VALUS|VALES)\b", "VALUES", "Corrected the VALUES keyword."),
+            (r"\bUPDTE\b", "UPDATE", "Corrected UPDTE to UPDATE."),
+            (r"\bDELET\b", "DELETE", "Corrected DELET to DELETE."),
+            (r"\bCRETE\b", "CREATE", "Corrected CRETE to CREATE."),
+            (r"\bTABEL\b", "TABLE", "Corrected TABEL to TABLE."),
+            (r"\bALTR\b", "ALTER", "Corrected ALTR to ALTER."),
+            (r"\bDORP\b", "DROP", "Corrected DORP to DROP."),
+            (r"\bPRIMRY\b", "PRIMARY", "Corrected PRIMRY to PRIMARY."),
+            (r"\bFORIEGN\b", "FOREIGN", "Corrected FORIEGN to FOREIGN."),
+            (r"\bREFRENCES\b", "REFERENCES", "Corrected REFRENCES to REFERENCES."),
+        ])
+    else:
+        replacements.extend([
+            (r"\bStudnt\b", "Student", "Corrected the table name to Student."),
+            (r"\bEnrolment\b", "Enrollment", "Corrected the table name to Enrollment."),
+            (r"\bDepartmnt\b", "Department", "Corrected the table name to Department."),
+            (r"\bTecher\b", "Teacher", "Corrected the table name to Teacher."),
+        ])
     applied_reasons: list[str] = []
     for pattern, replacement, reason in replacements:
         if re.search(pattern, corrected, re.IGNORECASE):
@@ -190,10 +208,15 @@ def fix_query(query: str, database_error: str = "") -> dict[str, Any]:
         corrected = re.sub(r"\bHAVING\s*(?=(?:ORDER\s+BY|LIMIT|OFFSET)\b|;|$)", "", corrected, count=1, flags=re.IGNORECASE)
         applied_reasons.append("Removed the incomplete HAVING clause because it had no condition.")
 
+    schema_tables = re.findall(r'\bCREATE\s+(?:TEMP(?:ORARY)?\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`\[]?([A-Za-z_]\w*)', schema, re.IGNORECASE)
+    schema_columns = re.findall(r'(?:\(|,)\s*["`\[]?([A-Za-z_]\w*)["`\]]?\s+(?:INTEGER|INT|REAL|TEXT|BLOB|NUMERIC|BOOLEAN|DATE|DATETIME|VARCHAR|CHAR|DECIMAL|FLOAT|DOUBLE)\b', schema, re.IGNORECASE)
+    known_tables = schema_tables if mode == "write-lab" and schema_tables else ["Student", "Course", "Teacher", "Department", "Enrollment"]
+    known_columns = schema_columns if mode == "write-lab" and schema_columns else ["student_id", "course_id", "teacher_id", "dept_id", "name", "marks", "semester", "course_name", "dept_name"]
+
     missing_table = re.search(r"no such table:\s*([A-Za-z_]\w*)", database_error, re.IGNORECASE)
     if missing_table:
         value = missing_table.group(1)
-        matches = get_close_matches(value, ["Student", "Course", "Teacher", "Department", "Enrollment"], n=1, cutoff=0.6)
+        matches = get_close_matches(value, known_tables, n=1, cutoff=0.6)
         if matches:
             corrected = re.sub(rf"\b{re.escape(value)}\b", matches[0], corrected, flags=re.IGNORECASE)
             applied_reasons.append(f"Replaced the unknown table {value} with {matches[0]}.")
@@ -201,8 +224,7 @@ def fix_query(query: str, database_error: str = "") -> dict[str, Any]:
     missing_column = re.search(r"no such column:\s*(?:[A-Za-z_]\w*\.)?([A-Za-z_]\w*)", database_error, re.IGNORECASE)
     if missing_column:
         value = missing_column.group(1)
-        choices = ["student_id", "course_id", "teacher_id", "dept_id", "name", "marks", "semester", "course_name", "dept_name"]
-        matches = get_close_matches(value, choices, n=1, cutoff=0.6)
+        matches = get_close_matches(value, known_columns, n=1, cutoff=0.6)
         if matches:
             corrected = re.sub(rf"\b{re.escape(value)}\b", matches[0], corrected, flags=re.IGNORECASE)
             applied_reasons.append(f"Replaced the unknown column {value} with {matches[0]}.")
@@ -210,12 +232,15 @@ def fix_query(query: str, database_error: str = "") -> dict[str, Any]:
     if applied_reasons:
         fallback = {"has_error": True, "error_explanation": database_error or "A common SQL syntax problem was detected.", "corrected_sql": corrected, "reason": " ".join(applied_reasons), "source": "built-in"}
     elif database_error:
-        fallback = {"has_error": True, "error_explanation": database_error, "corrected_sql": corrected, "reason": "The error was detected, but an automatic edit would be unsafe. Review the database message and CollegeDB column names.", "source": "built-in"}
+        reason = "SQLite identified the error, but no safe automatic text change was found. Review the failing statement and current PracticeDB schema." if mode == "write-lab" else "The error was detected, but an automatic edit would be unsafe. Review the database message and CollegeDB column names."
+        fallback = {"has_error": True, "error_explanation": database_error, "corrected_sql": corrected, "reason": reason, "source": "built-in"}
     else:
         fallback = {"has_error": False, "error_explanation": "No common syntax problem was detected in this query.", "corrected_sql": corrected, "reason": "Run the query to let SQLite check deeper semantic errors.", "source": "built-in"}
 
-    response = _ask_groq(
-        "Return only JSON with has_error, error_explanation, corrected_sql, and reason. Correct to exactly one read-only SQLite SELECT or WITH query using only the schema.",
-        f"Schema:\n{COLLEGE_SCHEMA}\n\nSQL:\n<sql>{query}</sql>\n\nError:\n<error>{database_error or 'none supplied'}</error>",
-    )
+    system = "Return only JSON with has_error, error_explanation, corrected_sql, and reason. Correct to exactly one read-only SQLite SELECT or WITH query using only the schema."
+    active_schema = COLLEGE_SCHEMA
+    if mode == "write-lab":
+        system = "Return only JSON with has_error, error_explanation, corrected_sql, and reason. Make the smallest SQLite correction. Preserve statement count, types, predicates, and intent. Never introduce a new data-changing operation and never execute SQL."
+        active_schema = schema or "No schema objects are currently defined."
+    response = _ask_groq(system, f"Schema:\n{active_schema}\n\nSQL:\n<sql>{query}</sql>\n\nError:\n<error>{database_error or 'none supplied'}</error>")
     return {**response, "source": "groq"} if response and response.get("corrected_sql") else fallback

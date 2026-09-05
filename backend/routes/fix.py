@@ -9,4 +9,4 @@ router = APIRouter(prefix="/api", tags=["AI Tutor"])
 
 @router.post("/fix")
 def fix_sql(request: FixRequest) -> dict:
-    return fix_query(request.query, request.database_error)
+    return fix_query(request.query, request.database_error, request.mode, request.schema)

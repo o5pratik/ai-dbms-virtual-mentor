@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -34,6 +36,8 @@ class SuggestRequest(BaseModel):
 class FixRequest(BaseModel):
     query: str = Field(min_length=1, max_length=10_000)
     database_error: str = Field(default="", max_length=2_000)
+    mode: Literal["playground", "write-lab"] = "playground"
+    schema: str = Field(default="", max_length=12_000)
 
 
 class SaveQueryRequest(BaseModel):
