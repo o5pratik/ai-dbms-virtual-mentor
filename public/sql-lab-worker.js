@@ -7,27 +7,74 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE Department (
   dept_id INTEGER PRIMARY KEY,
-  department_name TEXT NOT NULL UNIQUE
+  dept_name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE Teacher (
+  teacher_id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  dept_id INTEGER NOT NULL,
+  FOREIGN KEY (dept_id) REFERENCES Department(dept_id)
+);
+
+CREATE TABLE Course (
+  course_id INTEGER PRIMARY KEY,
+  course_name TEXT NOT NULL,
+  teacher_id INTEGER NOT NULL,
+  FOREIGN KEY (teacher_id) REFERENCES Teacher(teacher_id)
 );
 
 CREATE TABLE Student (
   student_id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
   marks INTEGER NOT NULL CHECK (marks BETWEEN 0 AND 100),
-  dept_id INTEGER,
+  dept_id INTEGER NOT NULL,
   FOREIGN KEY (dept_id) REFERENCES Department(dept_id)
 );
 
-INSERT INTO Department (dept_id, department_name) VALUES
+CREATE TABLE Enrollment (
+  student_id INTEGER NOT NULL,
+  course_id INTEGER NOT NULL,
+  semester INTEGER NOT NULL CHECK (semester BETWEEN 1 AND 8),
+  PRIMARY KEY (student_id, course_id),
+  FOREIGN KEY (student_id) REFERENCES Student(student_id),
+  FOREIGN KEY (course_id) REFERENCES Course(course_id)
+);
+
+INSERT INTO Department (dept_id, dept_name) VALUES
   (1, 'Computer Science'),
-  (2, 'Electronics'),
-  (3, 'Mechanical');
+  (2, 'Information Technology'),
+  (3, 'Electronics');
+
+INSERT INTO Teacher (teacher_id, name, dept_id) VALUES
+  (1, 'Dr. Asha Mehta', 1),
+  (2, 'Prof. Vikram Rao', 2),
+  (3, 'Dr. Nisha Iyer', 3);
+
+INSERT INTO Course (course_id, course_name, teacher_id) VALUES
+  (101, 'Database Management Systems', 1),
+  (102, 'Data Structures', 2),
+  (103, 'Computer Networks', 3),
+  (104, 'Advanced SQL', 1);
 
 INSERT INTO Student (student_id, name, marks, dept_id) VALUES
-  (1, 'Aarav Mehta', 88, 1),
-  (2, 'Diya Nair', 76, 2),
-  (3, 'Kabir Shah', 92, 1),
-  (4, 'Meera Iyer', 81, 3);
+  (1, 'Rahul Sharma', 85, 1),
+  (2, 'Priya Patel', 92, 1),
+  (3, 'Arjun Singh', 78, 2),
+  (4, 'Sneha Reddy', 88, 3),
+  (5, 'Kabir Khan', 81, 2);
+
+INSERT INTO Enrollment (student_id, course_id, semester) VALUES
+  (1, 101, 4),
+  (1, 104, 4),
+  (2, 101, 4),
+  (3, 102, 3),
+  (4, 103, 4),
+  (5, 101, 4);
+
+CREATE INDEX idx_enrollment_semester ON Enrollment(semester);
+CREATE INDEX idx_student_marks ON Student(marks);
+PRAGMA optimize;
 `;
 
 const CHALLENGES = {
@@ -39,11 +86,11 @@ const CHALLENGES = {
   },
   'department-counts': {
     expectedSql: `
-      SELECT d.department_name, COUNT(s.student_id) AS student_count
+      SELECT d.dept_name AS department_name, COUNT(s.student_id) AS student_count
       FROM Department AS d
       LEFT JOIN Student AS s ON s.dept_id = d.dept_id
-      GROUP BY d.department_name
-      ORDER BY d.department_name;
+      GROUP BY d.dept_name
+      ORDER BY d.dept_name;
     `,
     success: 'Correct — every department is included with its student count.',
   },
@@ -53,7 +100,7 @@ const CHALLENGES = {
   },
   'student-departments': {
     expectedSql: `
-      SELECT s.name, d.department_name
+      SELECT s.name, d.dept_name AS department_name
       FROM Student AS s
       JOIN Department AS d ON d.dept_id = s.dept_id
       ORDER BY s.name;
@@ -62,10 +109,10 @@ const CHALLENGES = {
   },
   'department-averages': {
     expectedSql: `
-      SELECT d.department_name, ROUND(AVG(s.marks), 1) AS average_marks
+      SELECT d.dept_name AS department_name, ROUND(AVG(s.marks), 1) AS average_marks
       FROM Department AS d
       JOIN Student AS s ON s.dept_id = d.dept_id
-      GROUP BY d.department_name
+      GROUP BY d.dept_name
       ORDER BY average_marks DESC;
     `,
     success: 'Correct — the department averages and ranking are accurate.',
@@ -109,7 +156,9 @@ async function importDatabase(bytes) {
   if (!bytes || bytes.byteLength < 100)
     throw new Error('Choose a valid, non-empty SQLite database file.');
   if (bytes.byteLength > 20 * 1024 * 1024)
-    throw new Error('SQLite files are limited to 20 MB in Write Lab.');
+    throw new Error(
+      'SQLite files are limited to 20 MB in Editable Playground.',
+    );
   const header = new TextDecoder().decode(new Uint8Array(bytes, 0, 16));
   if (header !== 'SQLite format 3\0')
     throw new Error('This is not a valid SQLite 3 database file.');

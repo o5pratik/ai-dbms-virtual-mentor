@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 19 adds challenge mastery insights, personalized practice recommendations, and milestone badges, alongside cloud-synced progress, progressive coaching, a six-step graded path, PracticeDB checkpoints, autosave, schema-aware mentor repairs, SQLite file import, adaptive curriculum, skill analytics, execution plans, and persistent learning tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 20 adds a two-mode SQL Playground: query the protected CollegeDB or switch to an editable, locally recoverable copy for DDL, DML, and transactions. It also includes challenge mastery insights, cloud-synced progress, progressive coaching, a six-step graded path, schema-aware mentor repairs, SQLite file import, adaptive curriculum, execution plans, and persistent learning tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -19,8 +19,9 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Adaptive learning:** 12 lessons across SQL basics, querying, database design, and transactions with runnable challenges, hints, quick checks, and mentor explanations
 - **Skill analytics:** concept mastery, weak-area recommendations, practice coverage, and recurring error patterns derived from query history
 - **Productivity:** D1-backed history, saved SQL, learning progress, practice analytics, and CSV/JSON export
-- **Write Lab:** browser-isolated SQLite for DDL, DML, multi-statement scripts, transactions, selected-statement execution, `.db`/`.sqlite` import, schema inspection, reset, timeout protection, and `.sqlite` export
-- **Challenge grader:** six guided SQL tasks evaluated against a fresh seeded database without changing the learner's active PracticeDB
+- **Two-mode SQL Playground:** query the protected CollegeDB or switch in place to a browser-isolated editable copy for tables, rows, schema changes, and transactions
+- **Editable Playground:** SQLite seeded with Department, Teacher, Course, Student, and Enrollment, plus multi-statement execution, `.db`/`.sqlite` import, reset, recovery, and export
+- **Challenge grader:** six guided SQL tasks evaluated against a fresh seed without changing the learner's editable database
 - **Challenge progress:** D1-backed attempt and completion sync with automatic device merging, offline fallback, progress percentage, and reset controls
 - **Mastery insights:** challenge accuracy, attempt totals, first-try wins, personalized retry recommendations, and three milestone badges
 - **Progressive coaching:** stronger retry hints and reviewed solution reveal after three failed challenge checks
@@ -118,7 +119,7 @@ Each response includes a `source` field (`groq` or `built-in`) so the interface 
 
 Local CollegeDB is created and seeded automatically when FastAPI starts. The hosted D1 database is initialized through `drizzle/0000_college_schema.sql` during deployment. Both contain `Student`, `Course`, `Teacher`, `Department`, and `Enrollment`.
 
-The Write Lab uses a separate temporary `PracticeDB` inside a Web Worker. It can open SQLite files up to 20 MB and run SQLite `CREATE`, `ALTER`, `DROP`, `INSERT`, `UPDATE`, `DELETE`, transaction, PRAGMA, selected statements, and multi-statement scripts without modifying CollegeDB. Its state lasts for the current tab unless exported. Vendor-specific MySQL, PostgreSQL, Oracle, or SQL Server procedures still require their matching database engine.
+SQL Playground starts in protected CollegeDB query mode. Its **Editable session** mode runs a separate `EditableDB` inside a Web Worker, seeded with the five CollegeDB learning tables. It can open SQLite files up to 20 MB and run SQLite `CREATE`, `ALTER`, `DROP`, `INSERT`, `UPDATE`, `DELETE`, transactions, PRAGMA, selected statements, and multi-statement scripts without damaging the master CollegeDB. Local recovery and `.sqlite` export preserve learner work. Vendor-specific MySQL, PostgreSQL, Oracle, or SQL Server procedures still require their matching database engine.
 
 ## Tests and build
 
@@ -147,3 +148,4 @@ npm run build
 16. **Completed — Phase 17:** progressive retry hints, backward-compatible failure tracking, and reviewed solution reveal after three failed checks.
 17. **Completed — Phase 18:** cloud-synced challenge attempts and completions with automatic local merging and an offline device fallback.
 18. **Completed — Phase 19:** challenge mastery insights, personalized retry recommendations, and milestone achievement badges.
+19. **Completed — Phase 20:** in-place Playground mode switching between protected CollegeDB queries and a full editable CollegeDB copy with DDL, DML, recovery, reset, import, and export.
