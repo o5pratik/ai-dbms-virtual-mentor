@@ -1,26 +1,319 @@
 'use client';
 
 import { useState } from 'react';
-import { Activity, AlertTriangle, BarChart3, BookOpen, BrainCircuit, Check, CheckCircle2, ChevronRight, Clock3, Database, HelpCircle, Lightbulb, Play, RotateCcw, Save, Sparkles, Target, Trash2, Trophy, XCircle } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  BookOpen,
+  BrainCircuit,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Copy,
+  HelpCircle,
+  Lightbulb,
+  Play,
+  Save,
+  Search,
+  Sparkles,
+  Target,
+  Trash2,
+  Trophy,
+  XCircle,
+} from 'lucide-react';
 
 import type { HistoryItem, SavedQueryItem } from '../services/api';
 import type { WorkspaceView } from './Sidebar';
 
-type Topic = { id: string; title: string; category: 'SQL Basics' | 'Querying' | 'Database Design' | 'Transactions'; level: string; description: string; objective: string; concepts: string[]; query: string; challenge: string; challengeQuery: string; hint: string; quiz: { question: string; options: string[]; correct: number; explanation: string } };
+type Topic = {
+  id: string;
+  title: string;
+  category: 'SQL Basics' | 'Querying' | 'Database Design' | 'Transactions';
+  level: string;
+  description: string;
+  objective: string;
+  concepts: string[];
+  query: string;
+  challenge: string;
+  challengeQuery: string;
+  hint: string;
+  quiz: {
+    question: string;
+    options: string[];
+    correct: number;
+    explanation: string;
+  };
+};
 
 export const LEARNING_TOPICS: Topic[] = [
-  { id: 'select-basics', category: 'SQL Basics', title: 'SELECT fundamentals', level: 'Beginner', description: 'Choose columns, rename output, and inspect rows safely.', objective: 'Return only the attributes needed by a question.', concepts: ['SELECT', 'AS', 'LIMIT'], query: 'SELECT student_id, name, marks\nFROM Student\nLIMIT 10;', challenge: 'Show each student name and marks, limited to five rows.', challengeQuery: 'SELECT name, marks\nFROM Student\nLIMIT 5;', hint: 'List name and marks after SELECT, then add LIMIT 5.', quiz: { question: 'Which clause chooses the columns returned?', options: ['FROM', 'SELECT', 'WHERE'], correct: 1, explanation: 'SELECT defines the output columns.' } },
-  { id: 'filtering', category: 'SQL Basics', title: 'Filtering with WHERE', level: 'Beginner', description: 'Filter records with comparisons and boolean conditions.', objective: 'Translate a condition into a precise row predicate.', concepts: ['WHERE', 'AND', 'OR'], query: 'SELECT name, marks\nFROM Student\nWHERE marks >= 80\nORDER BY marks DESC;', challenge: 'Find students in department 1 with marks of at least 85.', challengeQuery: 'SELECT name, marks\nFROM Student\nWHERE dept_id = 1 AND marks >= 85;', hint: 'Combine the department and marks predicates with AND.', quiz: { question: 'Which operator requires both conditions to be true?', options: ['OR', 'AND', 'AS'], correct: 1, explanation: 'AND keeps rows only when both predicates are true.' } },
-  { id: 'sorting', category: 'SQL Basics', title: 'Sorting and limits', level: 'Beginner', description: 'Control result order and return a safe number of rows.', objective: 'Produce a predictable top-N result.', concepts: ['ORDER BY', 'DESC', 'LIMIT'], query: 'SELECT name, marks\nFROM Student\nORDER BY marks DESC\nLIMIT 3;', challenge: 'Return the two lowest student marks first.', challengeQuery: 'SELECT name, marks\nFROM Student\nORDER BY marks ASC\nLIMIT 2;', hint: 'Ascending order places the lowest marks first.', quiz: { question: 'Where does LIMIT appear in a SELECT query?', options: ['Before FROM', 'After ORDER BY', 'Inside WHERE'], correct: 1, explanation: 'LIMIT is applied after the result has been ordered.' } },
-  { id: 'joins', category: 'Querying', title: 'Joining related tables', level: 'Intermediate', description: 'Connect students, enrollments, and courses using keys.', objective: 'Follow foreign keys without creating a Cartesian result.', concepts: ['JOIN', 'ON', 'FK'], query: 'SELECT s.name, c.course_name\nFROM Student AS s\nJOIN Enrollment AS e ON s.student_id = e.student_id\nJOIN Course AS c ON e.course_id = c.course_id;', challenge: 'Show student names and their enrolled course names for semester 4.', challengeQuery: 'SELECT s.name, c.course_name\nFROM Student AS s\nJOIN Enrollment AS e ON s.student_id = e.student_id\nJOIN Course AS c ON e.course_id = c.course_id\nWHERE e.semester = 4;', hint: 'Join through Enrollment, then filter e.semester.', quiz: { question: 'What belongs in an ON clause?', options: ['A row limit', 'The matching key condition', 'The output aliases'], correct: 1, explanation: 'ON tells SQL how rows from the two sources are related.' } },
-  { id: 'aggregates', category: 'Querying', title: 'Aggregation and grouping', level: 'Intermediate', description: 'Summarize data using aggregate functions and groups.', objective: 'Calculate one summary row for each group.', concepts: ['COUNT', 'AVG', 'GROUP BY'], query: 'SELECT d.dept_name, COUNT(*) AS students, AVG(s.marks) AS avg_marks\nFROM Department AS d\nJOIN Student AS s ON d.dept_id = s.dept_id\nGROUP BY d.dept_name;', challenge: 'Count enrollments in each semester.', challengeQuery: 'SELECT semester, COUNT(*) AS enrollments\nFROM Enrollment\nGROUP BY semester\nORDER BY semester;', hint: 'Select semester and COUNT(*), then group by semester.', quiz: { question: 'Which clause forms groups before aggregation?', options: ['GROUP BY', 'ORDER BY', 'DISTINCT'], correct: 0, explanation: 'GROUP BY partitions rows for aggregate calculations.' } },
-  { id: 'having', category: 'Querying', title: 'Filtering grouped results', level: 'Intermediate', description: 'Apply conditions after groups and aggregates are created.', objective: 'Distinguish row filtering from group filtering.', concepts: ['HAVING', 'COUNT', 'GROUP BY'], query: 'SELECT semester, COUNT(*) AS enrollments\nFROM Enrollment\nGROUP BY semester\nHAVING COUNT(*) >= 2;', challenge: 'Show departments whose average mark is at least 82.', challengeQuery: 'SELECT dept_id, AVG(marks) AS avg_marks\nFROM Student\nGROUP BY dept_id\nHAVING AVG(marks) >= 82;', hint: 'Use HAVING with AVG(marks) after GROUP BY.', quiz: { question: 'Which clause filters aggregate groups?', options: ['WHERE', 'HAVING', 'LIMIT'], correct: 1, explanation: 'HAVING filters after grouping; WHERE filters input rows.' } },
-  { id: 'subqueries', category: 'Querying', title: 'Subqueries', level: 'Advanced', description: 'Use one query result as an input to another query.', objective: 'Nest a scalar query safely inside a predicate.', concepts: ['Subquery', 'AVG', 'WHERE'], query: 'SELECT name, marks\nFROM Student\nWHERE marks > (SELECT AVG(marks) FROM Student)\nORDER BY marks DESC;', challenge: 'Find courses taught by teachers in department 1.', challengeQuery: 'SELECT course_name\nFROM Course\nWHERE teacher_id IN (SELECT teacher_id FROM Teacher WHERE dept_id = 1);', hint: 'The inner query should return teacher IDs.', quiz: { question: 'A scalar subquery should return how many values?', options: ['One value', 'Exactly ten rows', 'Every table column'], correct: 0, explanation: 'A scalar subquery is used where one value is expected.' } },
-  { id: 'ctes', category: 'Querying', title: 'Common table expressions', level: 'Advanced', description: 'Break complex SQL into readable named steps with WITH.', objective: 'Separate an intermediate result from the final query.', concepts: ['WITH', 'CTE', 'JOIN'], query: 'WITH TopStudents AS (\n  SELECT student_id, name, marks FROM Student WHERE marks >= 85\n)\nSELECT * FROM TopStudents ORDER BY marks DESC;', challenge: 'Create a CTE for semester 4 enrollments and count its rows.', challengeQuery: 'WITH SemesterFour AS (\n  SELECT * FROM Enrollment WHERE semester = 4\n)\nSELECT COUNT(*) AS enrollments FROM SemesterFour;', hint: 'Define the filtered rows inside WITH, then query the CTE.', quiz: { question: 'Which keyword introduces a CTE?', options: ['WITH', 'HAVING', 'UNION'], correct: 0, explanation: 'WITH introduces one or more named common table expressions.' } },
-  { id: 'keys', category: 'Database Design', title: 'Keys and relationships', level: 'Intermediate', description: 'Understand how primary and foreign keys protect relationships.', objective: 'Recognize the parent and child sides of a relationship.', concepts: ['PRIMARY KEY', 'FOREIGN KEY', 'Cardinality'], query: 'SELECT e.student_id, s.name, e.course_id\nFROM Enrollment AS e\nJOIN Student AS s ON e.student_id = s.student_id;', challenge: 'Trace each course to its teacher using the foreign key.', challengeQuery: 'SELECT c.course_name, t.name AS teacher\nFROM Course AS c\nJOIN Teacher AS t ON c.teacher_id = t.teacher_id;', hint: 'Course.teacher_id references Teacher.teacher_id.', quiz: { question: 'Which key points to a row in another table?', options: ['Foreign key', 'Sort key', 'Display key'], correct: 0, explanation: 'A foreign key references a candidate or primary key in another table.' } },
-  { id: 'normalization', category: 'Database Design', title: 'Normalization thinking', level: 'Advanced', description: 'Separate repeating facts and reduce update anomalies.', objective: 'Explain why enrollment is a junction table.', concepts: ['1NF', '3NF', 'Junction table'], query: 'SELECT s.name, COUNT(*) AS course_count\nFROM Student AS s\nJOIN Enrollment AS e ON s.student_id = e.student_id\nGROUP BY s.student_id, s.name;', challenge: 'Inspect how Enrollment represents the many-to-many relationship.', challengeQuery: 'SELECT student_id, course_id, semester\nFROM Enrollment\nORDER BY student_id, course_id;', hint: 'Each Enrollment row associates one student with one course.', quiz: { question: 'Why is Enrollment separated from Student?', options: ['To store colors', 'To represent many-to-many enrollments', 'To rename students'], correct: 1, explanation: 'A junction table models the many-to-many relationship without repeating groups.' } },
-  { id: 'indexes', category: 'Database Design', title: 'Indexes and query plans', level: 'Advanced', description: 'Use planner evidence to understand efficient lookups.', objective: 'Compare a scan with an indexed search.', concepts: ['INDEX', 'SEARCH', 'SCAN'], query: 'SELECT *\nFROM Enrollment\nWHERE semester = 4;', challenge: 'Analyze a marks filter and inspect whether SQLite uses an index.', challengeQuery: 'SELECT name, marks\nFROM Student\nWHERE marks >= 85;', hint: 'Open the query, then use Analyze and choose SQLite plan.', quiz: { question: 'Which planner word usually indicates an indexed lookup?', options: ['SEARCH', 'SCAN', 'RETURN'], correct: 0, explanation: 'SQLite commonly reports SEARCH when it can narrow rows with an index or key.' } },
-  { id: 'transactions', category: 'Transactions', title: 'Transaction fundamentals', level: 'Intermediate', description: 'Understand atomicity, consistency, isolation, and durability.', objective: 'Reason about work that must succeed or fail as one unit.', concepts: ['ACID', 'COMMIT', 'ROLLBACK'], query: 'SELECT student_id, course_id, semester\nFROM Enrollment\nORDER BY student_id;', challenge: 'Inspect enrollment rows, then identify which related changes would belong in one transaction.', challengeQuery: 'SELECT s.name, c.course_name, e.semester\nFROM Enrollment AS e\nJOIN Student AS s ON e.student_id = s.student_id\nJOIN Course AS c ON e.course_id = c.course_id;', hint: 'A real enrollment write would update related facts atomically; this sandbox remains read-only.', quiz: { question: 'Which command permanently accepts a transaction?', options: ['ROLLBACK', 'COMMIT', 'SELECT'], correct: 1, explanation: 'COMMIT makes all successful changes in the transaction durable.' } },
+  {
+    id: 'select-basics',
+    category: 'SQL Basics',
+    title: 'SELECT fundamentals',
+    level: 'Beginner',
+    description: 'Choose columns, rename output, and inspect rows safely.',
+    objective: 'Return only the attributes needed by a question.',
+    concepts: ['SELECT', 'AS', 'LIMIT'],
+    query: 'SELECT student_id, name, marks\nFROM Student\nLIMIT 10;',
+    challenge: 'Show each student name and marks, limited to five rows.',
+    challengeQuery: 'SELECT name, marks\nFROM Student\nLIMIT 5;',
+    hint: 'List name and marks after SELECT, then add LIMIT 5.',
+    quiz: {
+      question: 'Which clause chooses the columns returned?',
+      options: ['FROM', 'SELECT', 'WHERE'],
+      correct: 1,
+      explanation: 'SELECT defines the output columns.',
+    },
+  },
+  {
+    id: 'filtering',
+    category: 'SQL Basics',
+    title: 'Filtering with WHERE',
+    level: 'Beginner',
+    description: 'Filter records with comparisons and boolean conditions.',
+    objective: 'Translate a condition into a precise row predicate.',
+    concepts: ['WHERE', 'AND', 'OR'],
+    query:
+      'SELECT name, marks\nFROM Student\nWHERE marks >= 80\nORDER BY marks DESC;',
+    challenge: 'Find students in department 1 with marks of at least 85.',
+    challengeQuery:
+      'SELECT name, marks\nFROM Student\nWHERE dept_id = 1 AND marks >= 85;',
+    hint: 'Combine the department and marks predicates with AND.',
+    quiz: {
+      question: 'Which operator requires both conditions to be true?',
+      options: ['OR', 'AND', 'AS'],
+      correct: 1,
+      explanation: 'AND keeps rows only when both predicates are true.',
+    },
+  },
+  {
+    id: 'sorting',
+    category: 'SQL Basics',
+    title: 'Sorting and limits',
+    level: 'Beginner',
+    description: 'Control result order and return a safe number of rows.',
+    objective: 'Produce a predictable top-N result.',
+    concepts: ['ORDER BY', 'DESC', 'LIMIT'],
+    query: 'SELECT name, marks\nFROM Student\nORDER BY marks DESC\nLIMIT 3;',
+    challenge: 'Return the two lowest student marks first.',
+    challengeQuery:
+      'SELECT name, marks\nFROM Student\nORDER BY marks ASC\nLIMIT 2;',
+    hint: 'Ascending order places the lowest marks first.',
+    quiz: {
+      question: 'Where does LIMIT appear in a SELECT query?',
+      options: ['Before FROM', 'After ORDER BY', 'Inside WHERE'],
+      correct: 1,
+      explanation: 'LIMIT is applied after the result has been ordered.',
+    },
+  },
+  {
+    id: 'joins',
+    category: 'Querying',
+    title: 'Joining related tables',
+    level: 'Intermediate',
+    description: 'Connect students, enrollments, and courses using keys.',
+    objective: 'Follow foreign keys without creating a Cartesian result.',
+    concepts: ['JOIN', 'ON', 'FK'],
+    query:
+      'SELECT s.name, c.course_name\nFROM Student AS s\nJOIN Enrollment AS e ON s.student_id = e.student_id\nJOIN Course AS c ON e.course_id = c.course_id;',
+    challenge:
+      'Show student names and their enrolled course names for semester 4.',
+    challengeQuery:
+      'SELECT s.name, c.course_name\nFROM Student AS s\nJOIN Enrollment AS e ON s.student_id = e.student_id\nJOIN Course AS c ON e.course_id = c.course_id\nWHERE e.semester = 4;',
+    hint: 'Join through Enrollment, then filter e.semester.',
+    quiz: {
+      question: 'What belongs in an ON clause?',
+      options: [
+        'A row limit',
+        'The matching key condition',
+        'The output aliases',
+      ],
+      correct: 1,
+      explanation: 'ON tells SQL how rows from the two sources are related.',
+    },
+  },
+  {
+    id: 'aggregates',
+    category: 'Querying',
+    title: 'Aggregation and grouping',
+    level: 'Intermediate',
+    description: 'Summarize data using aggregate functions and groups.',
+    objective: 'Calculate one summary row for each group.',
+    concepts: ['COUNT', 'AVG', 'GROUP BY'],
+    query:
+      'SELECT d.dept_name, COUNT(*) AS students, AVG(s.marks) AS avg_marks\nFROM Department AS d\nJOIN Student AS s ON d.dept_id = s.dept_id\nGROUP BY d.dept_name;',
+    challenge: 'Count enrollments in each semester.',
+    challengeQuery:
+      'SELECT semester, COUNT(*) AS enrollments\nFROM Enrollment\nGROUP BY semester\nORDER BY semester;',
+    hint: 'Select semester and COUNT(*), then group by semester.',
+    quiz: {
+      question: 'Which clause forms groups before aggregation?',
+      options: ['GROUP BY', 'ORDER BY', 'DISTINCT'],
+      correct: 0,
+      explanation: 'GROUP BY partitions rows for aggregate calculations.',
+    },
+  },
+  {
+    id: 'having',
+    category: 'Querying',
+    title: 'Filtering grouped results',
+    level: 'Intermediate',
+    description: 'Apply conditions after groups and aggregates are created.',
+    objective: 'Distinguish row filtering from group filtering.',
+    concepts: ['HAVING', 'COUNT', 'GROUP BY'],
+    query:
+      'SELECT semester, COUNT(*) AS enrollments\nFROM Enrollment\nGROUP BY semester\nHAVING COUNT(*) >= 2;',
+    challenge: 'Show departments whose average mark is at least 82.',
+    challengeQuery:
+      'SELECT dept_id, AVG(marks) AS avg_marks\nFROM Student\nGROUP BY dept_id\nHAVING AVG(marks) >= 82;',
+    hint: 'Use HAVING with AVG(marks) after GROUP BY.',
+    quiz: {
+      question: 'Which clause filters aggregate groups?',
+      options: ['WHERE', 'HAVING', 'LIMIT'],
+      correct: 1,
+      explanation: 'HAVING filters after grouping; WHERE filters input rows.',
+    },
+  },
+  {
+    id: 'subqueries',
+    category: 'Querying',
+    title: 'Subqueries',
+    level: 'Advanced',
+    description: 'Use one query result as an input to another query.',
+    objective: 'Nest a scalar query safely inside a predicate.',
+    concepts: ['Subquery', 'AVG', 'WHERE'],
+    query:
+      'SELECT name, marks\nFROM Student\nWHERE marks > (SELECT AVG(marks) FROM Student)\nORDER BY marks DESC;',
+    challenge: 'Find courses taught by teachers in department 1.',
+    challengeQuery:
+      'SELECT course_name\nFROM Course\nWHERE teacher_id IN (SELECT teacher_id FROM Teacher WHERE dept_id = 1);',
+    hint: 'The inner query should return teacher IDs.',
+    quiz: {
+      question: 'A scalar subquery should return how many values?',
+      options: ['One value', 'Exactly ten rows', 'Every table column'],
+      correct: 0,
+      explanation: 'A scalar subquery is used where one value is expected.',
+    },
+  },
+  {
+    id: 'ctes',
+    category: 'Querying',
+    title: 'Common table expressions',
+    level: 'Advanced',
+    description: 'Break complex SQL into readable named steps with WITH.',
+    objective: 'Separate an intermediate result from the final query.',
+    concepts: ['WITH', 'CTE', 'JOIN'],
+    query:
+      'WITH TopStudents AS (\n  SELECT student_id, name, marks FROM Student WHERE marks >= 85\n)\nSELECT * FROM TopStudents ORDER BY marks DESC;',
+    challenge: 'Create a CTE for semester 4 enrollments and count its rows.',
+    challengeQuery:
+      'WITH SemesterFour AS (\n  SELECT * FROM Enrollment WHERE semester = 4\n)\nSELECT COUNT(*) AS enrollments FROM SemesterFour;',
+    hint: 'Define the filtered rows inside WITH, then query the CTE.',
+    quiz: {
+      question: 'Which keyword introduces a CTE?',
+      options: ['WITH', 'HAVING', 'UNION'],
+      correct: 0,
+      explanation:
+        'WITH introduces one or more named common table expressions.',
+    },
+  },
+  {
+    id: 'keys',
+    category: 'Database Design',
+    title: 'Keys and relationships',
+    level: 'Intermediate',
+    description:
+      'Understand how primary and foreign keys protect relationships.',
+    objective: 'Recognize the parent and child sides of a relationship.',
+    concepts: ['PRIMARY KEY', 'FOREIGN KEY', 'Cardinality'],
+    query:
+      'SELECT e.student_id, s.name, e.course_id\nFROM Enrollment AS e\nJOIN Student AS s ON e.student_id = s.student_id;',
+    challenge: 'Trace each course to its teacher using the foreign key.',
+    challengeQuery:
+      'SELECT c.course_name, t.name AS teacher\nFROM Course AS c\nJOIN Teacher AS t ON c.teacher_id = t.teacher_id;',
+    hint: 'Course.teacher_id references Teacher.teacher_id.',
+    quiz: {
+      question: 'Which key points to a row in another table?',
+      options: ['Foreign key', 'Sort key', 'Display key'],
+      correct: 0,
+      explanation:
+        'A foreign key references a candidate or primary key in another table.',
+    },
+  },
+  {
+    id: 'normalization',
+    category: 'Database Design',
+    title: 'Normalization thinking',
+    level: 'Advanced',
+    description: 'Separate repeating facts and reduce update anomalies.',
+    objective: 'Explain why enrollment is a junction table.',
+    concepts: ['1NF', '3NF', 'Junction table'],
+    query:
+      'SELECT s.name, COUNT(*) AS course_count\nFROM Student AS s\nJOIN Enrollment AS e ON s.student_id = e.student_id\nGROUP BY s.student_id, s.name;',
+    challenge:
+      'Inspect how Enrollment represents the many-to-many relationship.',
+    challengeQuery:
+      'SELECT student_id, course_id, semester\nFROM Enrollment\nORDER BY student_id, course_id;',
+    hint: 'Each Enrollment row associates one student with one course.',
+    quiz: {
+      question: 'Why is Enrollment separated from Student?',
+      options: [
+        'To store colors',
+        'To represent many-to-many enrollments',
+        'To rename students',
+      ],
+      correct: 1,
+      explanation:
+        'A junction table models the many-to-many relationship without repeating groups.',
+    },
+  },
+  {
+    id: 'indexes',
+    category: 'Database Design',
+    title: 'Indexes and query plans',
+    level: 'Advanced',
+    description: 'Use planner evidence to understand efficient lookups.',
+    objective: 'Compare a scan with an indexed search.',
+    concepts: ['INDEX', 'SEARCH', 'SCAN'],
+    query: 'SELECT *\nFROM Enrollment\nWHERE semester = 4;',
+    challenge:
+      'Analyze a marks filter and inspect whether SQLite uses an index.',
+    challengeQuery: 'SELECT name, marks\nFROM Student\nWHERE marks >= 85;',
+    hint: 'Open the query, then use Analyze and choose SQLite plan.',
+    quiz: {
+      question: 'Which planner word usually indicates an indexed lookup?',
+      options: ['SEARCH', 'SCAN', 'RETURN'],
+      correct: 0,
+      explanation:
+        'SQLite commonly reports SEARCH when it can narrow rows with an index or key.',
+    },
+  },
+  {
+    id: 'transactions',
+    category: 'Transactions',
+    title: 'Transaction fundamentals',
+    level: 'Intermediate',
+    description:
+      'Understand atomicity, consistency, isolation, and durability.',
+    objective: 'Reason about work that must succeed or fail as one unit.',
+    concepts: ['ACID', 'COMMIT', 'ROLLBACK'],
+    query:
+      'SELECT student_id, course_id, semester\nFROM Enrollment\nORDER BY student_id;',
+    challenge:
+      'Inspect enrollment rows, then identify which related changes would belong in one transaction.',
+    challengeQuery:
+      'SELECT s.name, c.course_name, e.semester\nFROM Enrollment AS e\nJOIN Student AS s ON e.student_id = s.student_id\nJOIN Course AS c ON e.course_id = c.course_id;',
+    hint: 'A real enrollment write would update related facts atomically; this sandbox remains read-only.',
+    quiz: {
+      question: 'Which command permanently accepts a transaction?',
+      options: ['ROLLBACK', 'COMMIT', 'SELECT'],
+      correct: 1,
+      explanation:
+        'COMMIT makes all successful changes in the transaction durable.',
+    },
+  },
 ];
 
 type Props = {
@@ -38,113 +331,1213 @@ type Props = {
   onExplainQuery: (query: string) => void;
 };
 
-function ViewHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {
-  return <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--blue-bright)]">{eyebrow}</p><h1 className="mt-1 text-lg font-bold tracking-tight">{title}</h1><p className="mt-1 text-xs text-[var(--muted)]">{description}</p></div>{action}</div>;
+function ViewHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--blue-bright)]">
+          {eyebrow}
+        </p>
+        <h1 className="mt-1 text-lg font-bold tracking-tight">{title}</h1>
+        <p className="mt-1 text-xs text-[var(--muted)]">{description}</p>
+      </div>
+      {action}
+    </div>
+  );
 }
 
-function RunButton({ onClick, label = 'Open in playground' }: { onClick: () => void; label?: string }) {
-  return <button type="button" onClick={onClick} className="flex items-center gap-1.5 rounded-lg bg-[color:rgb(109_141_255_/_12%)] px-2.5 py-1.5 text-[10px] font-semibold text-[var(--blue-bright)] hover:bg-[color:rgb(109_141_255_/_18%)]"><Play size={11} fill="currentColor" /> {label}</button>;
+function RunButton({
+  onClick,
+  label = 'Open in playground',
+}: {
+  onClick: () => void;
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1.5 rounded-lg bg-[color:rgb(109_141_255_/_12%)] px-2.5 py-1.5 text-[10px] font-semibold text-[var(--blue-bright)] hover:bg-[color:rgb(109_141_255_/_18%)]"
+    >
+      <Play size={11} fill="currentColor" /> {label}
+    </button>
+  );
 }
 
-function EmptyState({ icon: Icon, title, description }: { icon: typeof Clock3; title: string; description: string }) {
-  return <div className="flex min-h-64 flex-col items-center justify-center text-center"><div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]"><Icon size={18} className="text-[var(--muted)]" /></div><p className="mt-3 text-sm font-semibold">{title}</p><p className="mt-1 max-w-xs text-xs leading-5 text-[var(--muted)]">{description}</p></div>;
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: typeof Clock3;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex min-h-64 flex-col items-center justify-center text-center">
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]">
+        <Icon size={18} className="text-[var(--muted)]" />
+      </div>
+      <p className="mt-3 text-sm font-semibold">{title}</p>
+      <p className="mt-1 max-w-xs text-xs leading-5 text-[var(--muted)]">
+        {description}
+      </p>
+    </div>
+  );
 }
 
-function Dashboard({ history, saved, completedTopics, onNavigate, onRunQuery }: Pick<Props, 'history' | 'saved' | 'completedTopics' | 'onNavigate' | 'onRunQuery'>) {
+function Dashboard({
+  history,
+  saved,
+  completedTopics,
+  onNavigate,
+  onRunQuery,
+}: Pick<
+  Props,
+  'history' | 'saved' | 'completedTopics' | 'onNavigate' | 'onRunQuery'
+>) {
   const successes = history.filter((item) => item.success).length;
-  const successRate = history.length ? Math.round((successes / history.length) * 100) : 0;
-  const stats = [[history.length, 'Queries run', Activity, 'blue'], [`${successRate}%`, 'Success rate', CheckCircle2, 'green'], [saved.length, 'Saved queries', Save, 'violet'], [`${completedTopics.size}/${LEARNING_TOPICS.length}`, 'Topics complete', Trophy, 'amber']] as const;
-  const nextTopic = LEARNING_TOPICS.find((topic) => !completedTopics.has(topic.id)) ?? LEARNING_TOPICS[0];
-  return <><ViewHeader eyebrow="Phase 8 · learning command center" title="Dashboard" description="Track practice, revisit useful SQL, and continue your adaptive learning path." /><div className="min-h-0 flex-1 overflow-y-auto p-5"><div className="mx-auto max-w-5xl"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{stats.map(([value, label, Icon, tone]) => <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className="flex items-center justify-between"><Icon size={16} className={tone === 'green' ? 'text-[var(--green)]' : tone === 'violet' ? 'text-[var(--violet)]' : tone === 'amber' ? 'text-[#f6c76f]' : 'text-[var(--blue-bright)]'} /><span className="text-[9px] uppercase tracking-wider text-[var(--muted)]">Live</span></div><p className="mt-4 text-2xl font-bold tracking-tight">{value}</p><p className="mt-1 text-[10px] text-[var(--muted)]">{label}</p></div>)}</div><div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_1fr]"><div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3"><p className="text-xs font-bold">Recent activity</p><button type="button" onClick={() => onNavigate('history')} className="text-[10px] text-[var(--blue-bright)]">View all</button></div><div className="divide-y divide-[var(--border)]">{history.slice(0, 5).map((item) => <button key={item.id} type="button" onClick={() => onRunQuery(item.query)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[color:rgb(109_141_255_/_4%)]"><span className={`h-2 w-2 shrink-0 rounded-full ${item.success ? 'bg-[var(--green)]' : 'bg-[var(--red)]'}`} /><span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[var(--muted-bright)]">{item.query.replace(/\s+/g, ' ')}</span><span className="text-[9px] text-[var(--muted)]">{item.row_count} rows</span></button>)}{!history.length ? <div className="px-4 py-8 text-center text-xs text-[var(--muted)]">Run your first SQL query to start the activity feed.</div> : null}</div></div><div className="rounded-xl border border-[var(--border)] bg-[linear-gradient(145deg,rgb(109_141_255_/_10%),rgb(155_124_255_/_5%))] p-5"><Sparkles size={18} className="text-[var(--blue-bright)]" /><h2 className="mt-3 text-sm font-bold">Continue learning</h2><p className="mt-2 text-xs leading-5 text-[var(--muted-bright)]">Next: <strong>{nextTopic.title}</strong>. {nextTopic.objective}</p><div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--surface-muted)]"><div className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--violet))]" style={{ width: `${Math.round((completedTopics.size / LEARNING_TOPICS.length) * 100)}%` }} /></div><div className="mt-4 flex gap-2"><RunButton onClick={() => onRunQuery(nextTopic.challengeQuery)} label="Start practice" /><button type="button" onClick={() => onNavigate('topics')} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--muted-bright)]">Learning path</button></div></div></div></div></div></>;
+  const successRate = history.length
+    ? Math.round((successes / history.length) * 100)
+    : 0;
+  const stats = [
+    [history.length, 'Queries run', Activity, 'blue'],
+    [`${successRate}%`, 'Success rate', CheckCircle2, 'green'],
+    [saved.length, 'Saved queries', Save, 'violet'],
+    [
+      `${completedTopics.size}/${LEARNING_TOPICS.length}`,
+      'Topics complete',
+      Trophy,
+      'amber',
+    ],
+  ] as const;
+  const nextTopic =
+    LEARNING_TOPICS.find((topic) => !completedTopics.has(topic.id)) ??
+    LEARNING_TOPICS[0];
+  return (
+    <>
+      <ViewHeader
+        eyebrow="Phase 8 · learning command center"
+        title="Dashboard"
+        description="Track practice, revisit useful SQL, and continue your adaptive learning path."
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {stats.map(([value, label, Icon, tone]) => (
+              <div
+                key={label}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <Icon
+                    size={16}
+                    className={
+                      tone === 'green'
+                        ? 'text-[var(--green)]'
+                        : tone === 'violet'
+                          ? 'text-[var(--violet)]'
+                          : tone === 'amber'
+                            ? 'text-[#f6c76f]'
+                            : 'text-[var(--blue-bright)]'
+                    }
+                  />
+                  <span className="text-[9px] uppercase tracking-wider text-[var(--muted)]">
+                    Live
+                  </span>
+                </div>
+                <p className="mt-4 text-2xl font-bold tracking-tight">
+                  {value}
+                </p>
+                <p className="mt-1 text-[10px] text-[var(--muted)]">{label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+                <p className="text-xs font-bold">Recent activity</p>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('history')}
+                  className="text-[10px] text-[var(--blue-bright)]"
+                >
+                  View all
+                </button>
+              </div>
+              <div className="divide-y divide-[var(--border)]">
+                {history.slice(0, 5).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onRunQuery(item.query)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[color:rgb(109_141_255_/_4%)]"
+                  >
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${item.success ? 'bg-[var(--green)]' : 'bg-[var(--red)]'}`}
+                    />
+                    <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[var(--muted-bright)]">
+                      {item.query.replace(/\s+/g, ' ')}
+                    </span>
+                    <span className="text-[9px] text-[var(--muted)]">
+                      {item.row_count} rows
+                    </span>
+                  </button>
+                ))}
+                {!history.length ? (
+                  <div className="px-4 py-8 text-center text-xs text-[var(--muted)]">
+                    Run your first SQL query to start the activity feed.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[linear-gradient(145deg,rgb(109_141_255_/_10%),rgb(155_124_255_/_5%))] p-5">
+              <Sparkles size={18} className="text-[var(--blue-bright)]" />
+              <h2 className="mt-3 text-sm font-bold">Continue learning</h2>
+              <p className="mt-2 text-xs leading-5 text-[var(--muted-bright)]">
+                Next: <strong>{nextTopic.title}</strong>. {nextTopic.objective}
+              </p>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--violet))]"
+                  style={{
+                    width: `${Math.round((completedTopics.size / LEARNING_TOPICS.length) * 100)}%`,
+                  }}
+                />
+              </div>
+              <div className="mt-4 flex gap-2">
+                <RunButton
+                  onClick={() => onRunQuery(nextTopic.challengeQuery)}
+                  label="Start practice"
+                />
+                <button
+                  type="button"
+                  onClick={() => onNavigate('topics')}
+                  className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--muted-bright)]"
+                >
+                  Learning path
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
-function HistoryView({ history, onRunQuery, onSaveQuery, onClearHistory }: Pick<Props, 'history' | 'onRunQuery' | 'onSaveQuery' | 'onClearHistory'>) {
-  return <><ViewHeader eyebrow="Phase 4 · practice record" title="Query History" description="Every SQL run is recorded so you can inspect, retry, or save it." action={history.length ? <button type="button" onClick={onClearHistory} className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-[10px] text-[var(--muted)] hover:border-[color:rgb(255_107_135_/_35%)] hover:text-[var(--red)]"><Trash2 size={12} /> Clear history</button> : undefined} /><div className="min-h-0 flex-1 overflow-y-auto p-5"><div className="mx-auto max-w-5xl">{history.length ? <div className="space-y-2">{history.map((item) => <div key={item.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className="flex flex-wrap items-center gap-2"><span className={`flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${item.success ? 'bg-[color:rgb(72_213_151_/_9%)] text-[var(--green)]' : 'bg-[color:rgb(255_107_135_/_9%)] text-[var(--red)]'}`}>{item.success ? <CheckCircle2 size={10} /> : <XCircle size={10} />}{item.success ? 'SUCCESS' : 'ERROR'}</span><span className="text-[9px] text-[var(--muted)]">{new Date(`${item.executed_at}Z`).toLocaleString()}</span><span className="ml-auto text-[9px] text-[var(--muted)]">{item.row_count} rows · {item.execution_time} ms</span></div><pre className="mt-3 max-h-28 overflow-auto whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[#090d14] p-3 font-mono text-[10px] leading-4 text-[#c9d3e3]">{item.query}</pre>{item.error ? <p className="mt-2 text-[10px] text-[var(--red)]">{item.error}</p> : null}<div className="mt-3 flex gap-2"><RunButton onClick={() => onRunQuery(item.query)} label="Run again" /><button type="button" onClick={() => onSaveQuery(item.query)} className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--muted-bright)]"><Save size={11} /> Save</button></div></div>)}</div> : <EmptyState icon={Clock3} title="No query history yet" description="Run SQL in the playground and your recent attempts will appear here." />}</div></div></>;
+function HistoryView({
+  history,
+  onRunQuery,
+  onSaveQuery,
+  onClearHistory,
+}: Pick<Props, 'history' | 'onRunQuery' | 'onSaveQuery' | 'onClearHistory'>) {
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<'all' | 'success' | 'error'>('all');
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredHistory = history.filter((item) => {
+    const matchesStatus =
+      status === 'all' ||
+      (status === 'success' ? Boolean(item.success) : !item.success);
+    const matchesSearch =
+      !normalizedSearch ||
+      item.query.toLowerCase().includes(normalizedSearch) ||
+      (item.error ?? '').toLowerCase().includes(normalizedSearch);
+    return matchesStatus && matchesSearch;
+  });
+  const successes = history.filter((item) => item.success).length;
+
+  return (
+    <>
+      <ViewHeader
+        eyebrow="Phase 23 · searchable practice record"
+        title="Query History"
+        description="Find previous SQL by text or result, then retry or save it."
+        action={
+          history.length ? (
+            <button
+              type="button"
+              onClick={onClearHistory}
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-[10px] text-[var(--muted)] hover:border-[color:rgb(255_107_135_/_35%)] hover:text-[var(--red)]"
+            >
+              <Trash2 size={12} /> Clear history
+            </button>
+          ) : undefined
+        }
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="mx-auto max-w-5xl">
+          {history.length ? (
+            <>
+              <div className="mb-4 grid gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:grid-cols-[1fr_auto]">
+                <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[#090d14] px-3">
+                  <Search size={14} className="text-[var(--muted)]" />
+                  <span className="sr-only">Search query history</span>
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search SQL or errors"
+                    className="min-w-0 flex-1 bg-transparent py-2.5 text-xs text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
+                  />
+                </label>
+                <div className="flex rounded-lg border border-[var(--border)] bg-[#090d14] p-1">
+                  {(['all', 'success', 'error'] as const).map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setStatus(item)}
+                      className={`rounded-md px-3 py-1.5 text-[10px] font-semibold capitalize ${status === item ? 'bg-[var(--surface-raised)] text-[var(--text)]' : 'text-[var(--muted)] hover:text-[var(--muted-bright)]'}`}
+                    >
+                      {item === 'all'
+                        ? `All ${history.length}`
+                        : item === 'success'
+                          ? `Success ${successes}`
+                          : `Errors ${history.length - successes}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {filteredHistory.length ? (
+                <div className="space-y-2">
+                  {filteredHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${item.success ? 'bg-[color:rgb(72_213_151_/_9%)] text-[var(--green)]' : 'bg-[color:rgb(255_107_135_/_9%)] text-[var(--red)]'}`}
+                        >
+                          {item.success ? (
+                            <CheckCircle2 size={10} />
+                          ) : (
+                            <XCircle size={10} />
+                          )}
+                          {item.success ? 'SUCCESS' : 'ERROR'}
+                        </span>
+                        <span className="text-[9px] text-[var(--muted)]">
+                          {new Date(`${item.executed_at}Z`).toLocaleString()}
+                        </span>
+                        <span className="ml-auto text-[9px] text-[var(--muted)]">
+                          {item.row_count} rows · {item.execution_time} ms
+                        </span>
+                      </div>
+                      <pre className="mt-3 max-h-28 overflow-auto whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[#090d14] p-3 font-mono text-[10px] leading-4 text-[#c9d3e3]">
+                        {item.query}
+                      </pre>
+                      {item.error ? (
+                        <p className="mt-2 text-[10px] text-[var(--red)]">
+                          {item.error}
+                        </p>
+                      ) : null}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <RunButton
+                          onClick={() => onRunQuery(item.query)}
+                          label="Run again"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onSaveQuery(item.query)}
+                          className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--muted-bright)] hover:bg-[var(--surface-raised)]"
+                        >
+                          <Save size={11} /> Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void navigator.clipboard.writeText(item.query)
+                          }
+                          className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--muted-bright)] hover:bg-[var(--surface-raised)]"
+                        >
+                          <Copy size={11} /> Copy
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Search}
+                  title="No matching history"
+                  description="Change the search text or result filter to see more attempts."
+                />
+              )}
+            </>
+          ) : (
+            <EmptyState
+              icon={Clock3}
+              title="No query history yet"
+              description="Run SQL in the playground and your recent attempts will appear here."
+            />
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
 
-function SavedView({ saved, onRunQuery, onDeleteSaved }: Pick<Props, 'saved' | 'onRunQuery' | 'onDeleteSaved'>) {
-  return <><ViewHeader eyebrow="Phase 4 · personal SQL library" title="Saved Queries" description="Keep useful queries ready for future practice and reuse." /><div className="min-h-0 flex-1 overflow-y-auto p-5"><div className="mx-auto grid max-w-5xl gap-3 lg:grid-cols-2">{saved.map((item) => <div key={item.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="text-xs font-bold">{item.name}</h2><p className="mt-1 text-[9px] text-[var(--muted)]">Saved {new Date(`${item.created_at}Z`).toLocaleDateString()}</p></div><button type="button" onClick={() => onDeleteSaved(item.id)} title="Delete saved query" className="rounded-md p-1.5 text-[var(--muted)] hover:bg-[color:rgb(255_107_135_/_8%)] hover:text-[var(--red)]"><Trash2 size={13} /></button></div><pre className="mt-3 h-28 overflow-auto whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[#090d14] p-3 font-mono text-[10px] leading-4 text-[#c9d3e3]">{item.query}</pre><div className="mt-3"><RunButton onClick={() => onRunQuery(item.query)} /></div></div>)}{!saved.length ? <div className="lg:col-span-2"><EmptyState icon={Save} title="No saved queries" description="Use Save in the SQL Playground or Query History to build your personal SQL library." /></div> : null}</div></div></>;
+function SavedView({
+  saved,
+  onRunQuery,
+  onDeleteSaved,
+}: Pick<Props, 'saved' | 'onRunQuery' | 'onDeleteSaved'>) {
+  const [search, setSearch] = useState('');
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredSaved = saved.filter(
+    (item) =>
+      !normalizedSearch ||
+      item.name.toLowerCase().includes(normalizedSearch) ||
+      item.query.toLowerCase().includes(normalizedSearch),
+  );
+
+  return (
+    <>
+      <ViewHeader
+        eyebrow="Phase 23 · searchable SQL library"
+        title="Saved Queries"
+        description="Search your useful SQL, copy it, or reopen it for editing."
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="mx-auto max-w-5xl">
+          {saved.length ? (
+            <label className="mb-4 flex max-w-md items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3">
+              <Search size={14} className="text-[var(--muted)]" />
+              <span className="sr-only">Search saved queries</span>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search names or SQL"
+                className="min-w-0 flex-1 bg-transparent py-2.5 text-xs text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
+              />
+              <span className="text-[9px] text-[var(--muted)]">
+                {filteredSaved.length}/{saved.length}
+              </span>
+            </label>
+          ) : null}
+          <div className="grid gap-3 lg:grid-cols-2">
+            {filteredSaved.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xs font-bold">{item.name}</h2>
+                    <p className="mt-1 text-[9px] text-[var(--muted)]">
+                      Saved{' '}
+                      {new Date(`${item.created_at}Z`).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteSaved(item.id)}
+                    title="Delete saved query"
+                    className="rounded-md p-1.5 text-[var(--muted)] hover:bg-[color:rgb(255_107_135_/_8%)] hover:text-[var(--red)]"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+                <pre className="mt-3 h-28 overflow-auto whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[#090d14] p-3 font-mono text-[10px] leading-4 text-[#c9d3e3]">
+                  {item.query}
+                </pre>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <RunButton onClick={() => onRunQuery(item.query)} />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void navigator.clipboard.writeText(item.query)
+                    }
+                    className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--muted-bright)] hover:bg-[var(--surface-raised)]"
+                  >
+                    <Copy size={11} /> Copy SQL
+                  </button>
+                </div>
+              </div>
+            ))}
+            {!saved.length ? (
+              <div className="lg:col-span-2">
+                <EmptyState
+                  icon={Save}
+                  title="No saved queries"
+                  description="Use Save in the SQL Playground or Query History to build your personal SQL library."
+                />
+              </div>
+            ) : !filteredSaved.length ? (
+              <div className="lg:col-span-2">
+                <EmptyState
+                  icon={Search}
+                  title="No matching saved query"
+                  description="Try a different name or SQL keyword."
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
+// Kept as a compact fallback for older analytics snapshots.
+// oxlint-disable-next-line no-unused-vars
 function LegacyAnalyticsView({ history }: Pick<Props, 'history'>) {
   const successCount = history.filter((item) => item.success).length;
-  const averageTime = successCount ? Math.round(history.filter((item) => item.success).reduce((sum, item) => sum + item.execution_time, 0) / successCount) : 0;
+  const averageTime = successCount
+    ? Math.round(
+        history
+          .filter((item) => item.success)
+          .reduce((sum, item) => sum + item.execution_time, 0) / successCount,
+      )
+    : 0;
   const totalRows = history.reduce((sum, item) => sum + item.row_count, 0);
-  const concepts = ['SELECT', 'JOIN', 'WHERE', 'GROUP BY', 'ORDER BY', 'WITH'].map((concept) => ({ concept, count: history.filter((item) => new RegExp(`\\b${concept.replace(' ', '\\s+')}\\b`, 'i').test(item.query)).length }));
+  const concepts = [
+    'SELECT',
+    'JOIN',
+    'WHERE',
+    'GROUP BY',
+    'ORDER BY',
+    'WITH',
+  ].map((concept) => ({
+    concept,
+    count: history.filter((item) =>
+      new RegExp(`\\b${concept.replace(' ', '\\s+')}\\b`, 'i').test(item.query),
+    ).length,
+  }));
   const maxCount = Math.max(1, ...concepts.map((item) => item.count));
-  return <><ViewHeader eyebrow="Phase 4 · practice analytics" title="Analytics" description="Understand your SQL activity, success rate, and concepts practiced." /><div className="min-h-0 flex-1 overflow-y-auto p-5"><div className="mx-auto max-w-5xl"><div className="grid gap-3 sm:grid-cols-3">{[[history.length, 'Total attempts'], [`${history.length ? Math.round((successCount / history.length) * 100) : 0}%`, 'Success rate'], [`${averageTime} ms`, 'Average runtime'], [totalRows, 'Rows explored']].map(([value, label]) => <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><p className="text-xl font-bold">{value}</p><p className="mt-1 text-[10px] text-[var(--muted)]">{label}</p></div>)}</div><div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1fr]"><div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"><div className="flex items-center gap-2 text-xs font-bold"><BarChart3 size={14} className="text-[var(--blue-bright)]" /> Concepts practiced</div><div className="mt-5 space-y-3">{concepts.map((item) => <div key={item.concept} className="grid grid-cols-[72px_1fr_24px] items-center gap-3"><span className="font-mono text-[9px] text-[var(--muted-bright)]">{item.concept}</span><div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]"><div className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--violet))]" style={{ width: `${(item.count / maxCount) * 100}%` }} /></div><span className="text-right text-[9px] text-[var(--muted)]">{item.count}</span></div>)}</div></div><div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"><div className="flex items-center gap-2 text-xs font-bold"><Activity size={14} className="text-[var(--green)]" /> Last 10 attempts</div><div className="mt-5 flex h-36 items-end gap-2">{history.slice(0, 10).reverse().map((item) => <div key={item.id} className="group flex min-w-0 flex-1 flex-col items-center justify-end"><div title={`${item.success ? 'Success' : 'Error'} · ${item.execution_time} ms`} className={`w-full rounded-t ${item.success ? 'bg-[var(--green)]' : 'bg-[var(--red)]'}`} style={{ height: `${Math.max(12, Math.min(100, item.execution_time))}%`, opacity: .75 }} /><span className="mt-2 text-[8px] text-[var(--muted)]">{item.id}</span></div>)}{!history.length ? <p className="m-auto text-xs text-[var(--muted)]">Run queries to populate analytics.</p> : null}</div></div></div></div></div></>;
+  return (
+    <>
+      <ViewHeader
+        eyebrow="Phase 4 · practice analytics"
+        title="Analytics"
+        description="Understand your SQL activity, success rate, and concepts practiced."
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              [history.length, 'Total attempts'],
+              [
+                `${history.length ? Math.round((successCount / history.length) * 100) : 0}%`,
+                'Success rate',
+              ],
+              [`${averageTime} ms`, 'Average runtime'],
+              [totalRows, 'Rows explored'],
+            ].map(([value, label]) => (
+              <div
+                key={label}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+              >
+                <p className="text-xl font-bold">{value}</p>
+                <p className="mt-1 text-[10px] text-[var(--muted)]">{label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <BarChart3 size={14} className="text-[var(--blue-bright)]" />{' '}
+                Concepts practiced
+              </div>
+              <div className="mt-5 space-y-3">
+                {concepts.map((item) => (
+                  <div
+                    key={item.concept}
+                    className="grid grid-cols-[72px_1fr_24px] items-center gap-3"
+                  >
+                    <span className="font-mono text-[9px] text-[var(--muted-bright)]">
+                      {item.concept}
+                    </span>
+                    <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+                      <div
+                        className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--violet))]"
+                        style={{ width: `${(item.count / maxCount) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-right text-[9px] text-[var(--muted)]">
+                      {item.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <Activity size={14} className="text-[var(--green)]" /> Last 10
+                attempts
+              </div>
+              <div className="mt-5 flex h-36 items-end gap-2">
+                {history
+                  .slice(0, 10)
+                  .reverse()
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      className="group flex min-w-0 flex-1 flex-col items-center justify-end"
+                    >
+                      <div
+                        title={`${item.success ? 'Success' : 'Error'} · ${item.execution_time} ms`}
+                        className={`w-full rounded-t ${item.success ? 'bg-[var(--green)]' : 'bg-[var(--red)]'}`}
+                        style={{
+                          height: `${Math.max(12, Math.min(100, item.execution_time))}%`,
+                          opacity: 0.75,
+                        }}
+                      />
+                      <span className="mt-2 text-[8px] text-[var(--muted)]">
+                        {item.id}
+                      </span>
+                    </div>
+                  ))}
+                {!history.length ? (
+                  <p className="m-auto text-xs text-[var(--muted)]">
+                    Run queries to populate analytics.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
-function AnalyticsView({ history, onRunQuery }: Pick<Props, 'history' | 'onRunQuery'>) {
+function AnalyticsView({
+  history,
+  onRunQuery,
+}: Pick<Props, 'history' | 'onRunQuery'>) {
   const successCount = history.filter((item) => item.success).length;
   const successful = history.filter((item) => item.success);
-  const averageTime = successful.length ? Math.round(successful.reduce((sum, item) => sum + item.execution_time, 0) / successful.length) : 0;
+  const averageTime = successful.length
+    ? Math.round(
+        successful.reduce((sum, item) => sum + item.execution_time, 0) /
+          successful.length,
+      )
+    : 0;
   const conceptDefinitions = [
-    { concept: 'Filtering', pattern: /\bWHERE\b/i, topicId: 'filtering' }, { concept: 'Joins', pattern: /\bJOIN\b/i, topicId: 'joins' },
-    { concept: 'Grouping', pattern: /\b(?:GROUP\s+BY|COUNT|AVG|SUM)\b/i, topicId: 'aggregates' }, { concept: 'Subqueries', pattern: /\(\s*SELECT\b/i, topicId: 'subqueries' },
-    { concept: 'CTEs', pattern: /^\s*WITH\b/i, topicId: 'ctes' }, { concept: 'Sorting', pattern: /\bORDER\s+BY\b/i, topicId: 'sorting' },
+    { concept: 'Filtering', pattern: /\bWHERE\b/i, topicId: 'filtering' },
+    { concept: 'Joins', pattern: /\bJOIN\b/i, topicId: 'joins' },
+    {
+      concept: 'Grouping',
+      pattern: /\b(?:GROUP\s+BY|COUNT|AVG|SUM)\b/i,
+      topicId: 'aggregates',
+    },
+    { concept: 'Subqueries', pattern: /\(\s*SELECT\b/i, topicId: 'subqueries' },
+    { concept: 'CTEs', pattern: /^\s*WITH\b/i, topicId: 'ctes' },
+    { concept: 'Sorting', pattern: /\bORDER\s+BY\b/i, topicId: 'sorting' },
   ];
   const concepts = conceptDefinitions.map((definition) => {
-    const attempts = history.filter((item) => definition.pattern.test(item.query));
+    const attempts = history.filter((item) =>
+      definition.pattern.test(item.query),
+    );
     const successes = attempts.filter((item) => item.success).length;
-    const mastery = attempts.length ? Math.round((successes / attempts.length) * 100) : 0;
-    const topic = LEARNING_TOPICS.find((item) => item.id === definition.topicId)!;
-    return { ...definition, attempts: attempts.length, failures: attempts.length - successes, mastery, topic };
+    const mastery = attempts.length
+      ? Math.round((successes / attempts.length) * 100)
+      : 0;
+    const topic = LEARNING_TOPICS.find(
+      (item) => item.id === definition.topicId,
+    )!;
+    return {
+      ...definition,
+      attempts: attempts.length,
+      failures: attempts.length - successes,
+      mastery,
+      topic,
+    };
   });
-  const weakest = [...concepts].sort((a, b) => {
-    const score = (item: typeof a) => item.attempts ? (100 - item.mastery) + Math.max(0, 3 - item.attempts) * 10 : 115;
-    return score(b) - score(a);
-  }).slice(0, 3);
+  const weakest = [...concepts]
+    .sort((a, b) => {
+      const score = (item: typeof a) =>
+        item.attempts
+          ? 100 - item.mastery + Math.max(0, 3 - item.attempts) * 10
+          : 115;
+      return score(b) - score(a);
+    })
+    .slice(0, 3);
   const errorDefinitions = [
-    ['Syntax', /syntax|near\s+["']/i], ['Unknown column', /no such column|column.*not found/i], ['Unknown table', /no such table|table.*not found/i],
-    ['Incomplete clause', /incomplete|missing value|after.*operator/i], ['Ambiguous name', /ambiguous/i], ['Sandbox rule', /not allowed|read-only|one SQL statement/i],
+    ['Syntax', /syntax|near\s+["']/i],
+    ['Unknown column', /no such column|column.*not found/i],
+    ['Unknown table', /no such table|table.*not found/i],
+    ['Incomplete clause', /incomplete|missing value|after.*operator/i],
+    ['Ambiguous name', /ambiguous/i],
+    ['Sandbox rule', /not allowed|read-only|one SQL statement/i],
   ] as const;
   const failed = history.filter((item) => !item.success);
-  const errorPatterns = errorDefinitions.map(([label, pattern]) => ({ label, count: failed.filter((item) => pattern.test(item.error ?? '')).length })).filter((item) => item.count);
-  const classifiedErrors = errorPatterns.reduce((sum, item) => sum + item.count, 0);
-  if (failed.length > classifiedErrors) errorPatterns.push({ label: 'Other', count: failed.length - classifiedErrors });
+  const errorPatterns: Array<{ label: string; count: number }> = errorDefinitions
+    .map(([label, pattern]) => ({
+      label,
+      count: failed.filter((item) => pattern.test(item.error ?? '')).length,
+    }))
+    .filter((item) => item.count);
+  const classifiedErrors = errorPatterns.reduce(
+    (sum, item) => sum + item.count,
+    0,
+  );
+  if (failed.length > classifiedErrors)
+    errorPatterns.push({
+      label: 'Other',
+      count: failed.length - classifiedErrors,
+    });
   const maxAttempts = Math.max(1, ...concepts.map((item) => item.attempts));
+  const recentAttempts = history.slice(0, 5);
+  const recentAccuracy = recentAttempts.length
+    ? Math.round(
+        (recentAttempts.filter((item) => item.success).length /
+          recentAttempts.length) *
+          100,
+      )
+    : 0;
+  const mostPracticed = [...concepts].sort(
+    (a, b) => b.attempts - a.attempts,
+  )[0];
 
-  return <><ViewHeader eyebrow="Phase 8 · skill intelligence" title="Learning Analytics" description="Find weak concepts, recurring errors, and the best lesson to practice next." /><div className="min-h-0 flex-1 overflow-y-auto p-5"><div className="mx-auto max-w-5xl">
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[[history.length, 'Total attempts'], [`${history.length ? Math.round((successCount / history.length) * 100) : 0}%`, 'Success rate'], [`${averageTime} ms`, 'Average runtime'], [concepts.filter((item) => item.mastery >= 80 && item.attempts >= 2).length, 'Strong concepts']].map(([value, label]) => <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><p className="text-xl font-bold">{value}</p><p className="mt-1 text-[10px] text-[var(--muted)]">{label}</p></div>)}</div>
-    <div className="mt-4 grid gap-4 xl:grid-cols-[1.25fr_1fr]"><div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"><div className="flex items-center gap-2 text-xs font-bold"><BarChart3 size={14} className="text-[var(--blue-bright)]" /> Concept mastery</div><div className="mt-5 space-y-4">{concepts.map((item) => <div key={item.concept}><div className="mb-1.5 flex items-center justify-between text-[9px]"><span className="font-mono text-[var(--muted-bright)]">{item.concept}</span><span className="text-[var(--muted)]">{item.attempts ? `${item.mastery}% success · ${item.attempts} attempts` : 'Not practiced'}</span></div><div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]"><div className={`h-full rounded-full ${item.mastery >= 80 ? 'bg-[var(--green)]' : item.mastery >= 50 ? 'bg-[#f6c76f]' : 'bg-[var(--blue)]'}`} style={{ width: `${item.attempts ? Math.max(8, item.mastery) : 0}%` }} /></div></div>)}</div></div>
-      <div className="rounded-xl border border-[var(--border)] bg-[linear-gradient(145deg,rgb(109_141_255_/_8%),rgb(155_124_255_/_4%))] p-5"><div className="flex items-center gap-2 text-xs font-bold"><Target size={14} className="text-[var(--violet)]" /> Recommended next</div><div className="mt-4 space-y-2">{weakest.map((item, index) => <div key={item.concept} className="rounded-lg border border-[var(--border)] bg-[color:rgb(9_14_22_/_55%)] p-3"><div className="flex items-start gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color:rgb(155_124_255_/_12%)] text-[9px] font-bold text-[var(--violet)]">{index + 1}</span><div className="min-w-0 flex-1"><p className="text-[10px] font-semibold">{item.topic.title}</p><p className="mt-1 text-[9px] text-[var(--muted)]">{item.attempts ? `${item.failures} failed attempt${item.failures === 1 ? '' : 's'} detected` : 'No practice detected yet'}</p><button type="button" onClick={() => onRunQuery(item.topic.challengeQuery)} className="mt-2 flex items-center gap-1 text-[9px] font-semibold text-[var(--blue-bright)]"><Play size={9} fill="currentColor" /> Practice now</button></div></div></div>)}</div></div>
-    </div>
-    <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.3fr]"><div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"><div className="flex items-center gap-2 text-xs font-bold"><AlertTriangle size={14} className="text-[#f6c76f]" /> Error patterns</div>{errorPatterns.length ? <div className="mt-4 space-y-3">{errorPatterns.map((item) => <div key={item.label} className="flex items-center gap-3"><span className="w-24 text-[9px] text-[var(--muted-bright)]">{item.label}</span><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--surface-muted)]"><div className="h-full rounded-full bg-[var(--red)]" style={{ width: `${(item.count / Math.max(1, failed.length)) * 100}%` }} /></div><strong className="w-5 text-right text-[9px]">{item.count}</strong></div>)}</div> : <p className="mt-5 text-[10px] leading-5 text-[var(--muted)]">No recurring error pattern yet. Failed queries will be grouped here.</p>}</div>
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"><div className="flex items-center gap-2 text-xs font-bold"><Activity size={14} className="text-[var(--green)]" /> Practice coverage</div><div className="mt-5 grid grid-cols-6 items-end gap-3">{concepts.map((item) => <div key={item.concept} className="flex flex-col items-center"><div className="flex h-28 w-full items-end rounded-md bg-[var(--surface-muted)]"><div className="w-full rounded-md bg-[linear-gradient(180deg,var(--blue),var(--violet))]" style={{ height: `${(item.attempts / maxAttempts) * 100}%`, minHeight: item.attempts ? 8 : 0 }} /></div><span className="mt-2 text-center text-[8px] text-[var(--muted)]">{item.concept}</span></div>)}</div></div>
-    </div>
-  </div></div></>;
+  return (
+    <>
+      <ViewHeader
+        eyebrow="Phase 23 · clearer skill intelligence"
+        title="Learning Analytics"
+        description="See recent accuracy, concept coverage, recurring errors, and the best lesson to practice next."
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-4 grid gap-3 rounded-xl border border-[color:rgb(109_141_255_/_24%)] bg-[linear-gradient(135deg,rgb(109_141_255_/_8%),rgb(155_124_255_/_4%))] p-4 sm:grid-cols-3">
+            <div>
+              <p className="text-[9px] uppercase tracking-wider text-[var(--muted)]">
+                Recent accuracy
+              </p>
+              <p className="mt-1 text-lg font-bold text-[var(--text)]">
+                {recentAccuracy}%
+              </p>
+              <p className="text-[9px] text-[var(--muted)]">
+                Last {recentAttempts.length} attempt
+                {recentAttempts.length === 1 ? '' : 's'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[9px] uppercase tracking-wider text-[var(--muted)]">
+                Most practiced
+              </p>
+              <p className="mt-1 text-sm font-bold text-[var(--text)]">
+                {mostPracticed?.attempts
+                  ? mostPracticed.concept
+                  : 'Start practicing'}
+              </p>
+              <p className="text-[9px] text-[var(--muted)]">
+                {mostPracticed?.attempts ?? 0} detected attempt
+                {mostPracticed?.attempts === 1 ? '' : 's'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[9px] uppercase tracking-wider text-[var(--muted)]">
+                Errors to review
+              </p>
+              <p className="mt-1 text-lg font-bold text-[var(--text)]">
+                {failed.length}
+              </p>
+              <p className="text-[9px] text-[var(--muted)]">
+                Grouped below by likely cause
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              [history.length, 'Total attempts'],
+              [
+                `${history.length ? Math.round((successCount / history.length) * 100) : 0}%`,
+                'Success rate',
+              ],
+              [`${averageTime} ms`, 'Average runtime'],
+              [
+                concepts.filter(
+                  (item) => item.mastery >= 80 && item.attempts >= 2,
+                ).length,
+                'Strong concepts',
+              ],
+            ].map(([value, label]) => (
+              <div
+                key={label}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+              >
+                <p className="text-xl font-bold">{value}</p>
+                <p className="mt-1 text-[10px] text-[var(--muted)]">{label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-4 xl:grid-cols-[1.25fr_1fr]">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <BarChart3 size={14} className="text-[var(--blue-bright)]" />{' '}
+                Concept mastery
+              </div>
+              <div className="mt-5 space-y-4">
+                {concepts.map((item) => (
+                  <div key={item.concept}>
+                    <div className="mb-1.5 flex items-center justify-between text-[9px]">
+                      <span className="font-mono text-[var(--muted-bright)]">
+                        {item.concept}
+                      </span>
+                      <span className="text-[var(--muted)]">
+                        {item.attempts
+                          ? `${item.mastery}% success · ${item.attempts} attempts`
+                          : 'Not practiced'}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+                      <div
+                        className={`h-full rounded-full ${item.mastery >= 80 ? 'bg-[var(--green)]' : item.mastery >= 50 ? 'bg-[#f6c76f]' : 'bg-[var(--blue)]'}`}
+                        style={{
+                          width: `${item.attempts ? Math.max(8, item.mastery) : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[linear-gradient(145deg,rgb(109_141_255_/_8%),rgb(155_124_255_/_4%))] p-5">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <Target size={14} className="text-[var(--violet)]" />{' '}
+                Recommended next
+              </div>
+              <div className="mt-4 space-y-2">
+                {weakest.map((item, index) => (
+                  <div
+                    key={item.concept}
+                    className="rounded-lg border border-[var(--border)] bg-[color:rgb(9_14_22_/_55%)] p-3"
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color:rgb(155_124_255_/_12%)] text-[9px] font-bold text-[var(--violet)]">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold">
+                          {item.topic.title}
+                        </p>
+                        <p className="mt-1 text-[9px] text-[var(--muted)]">
+                          {item.attempts
+                            ? `${item.failures} failed attempt${item.failures === 1 ? '' : 's'} detected`
+                            : 'No practice detected yet'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => onRunQuery(item.topic.challengeQuery)}
+                          className="mt-2 flex items-center gap-1 text-[9px] font-semibold text-[var(--blue-bright)]"
+                        >
+                          <Play size={9} fill="currentColor" /> Practice now
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1.3fr]">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <AlertTriangle size={14} className="text-[#f6c76f]" /> Error
+                patterns
+              </div>
+              {errorPatterns.length ? (
+                <div className="mt-4 space-y-3">
+                  {errorPatterns.map((item) => (
+                    <div key={item.label} className="flex items-center gap-3">
+                      <span className="w-24 text-[9px] text-[var(--muted-bright)]">
+                        {item.label}
+                      </span>
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+                        <div
+                          className="h-full rounded-full bg-[var(--red)]"
+                          style={{
+                            width: `${(item.count / Math.max(1, failed.length)) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <strong className="w-5 text-right text-[9px]">
+                        {item.count}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-5 text-[10px] leading-5 text-[var(--muted)]">
+                  No recurring error pattern yet. Failed queries will be grouped
+                  here.
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <Activity size={14} className="text-[var(--green)]" /> Practice
+                coverage
+              </div>
+              <div className="mt-5 grid grid-cols-6 items-end gap-3">
+                {concepts.map((item) => (
+                  <div
+                    key={item.concept}
+                    className="flex flex-col items-center"
+                  >
+                    <div className="flex h-28 w-full items-end rounded-md bg-[var(--surface-muted)]">
+                      <div
+                        className="w-full rounded-md bg-[linear-gradient(180deg,var(--blue),var(--violet))]"
+                        style={{
+                          height: `${(item.attempts / maxAttempts) * 100}%`,
+                          minHeight: item.attempts ? 8 : 0,
+                        }}
+                      />
+                    </div>
+                    <span className="mt-2 text-center text-[8px] text-[var(--muted)]">
+                      {item.concept}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
-function LegacyTopicsView({ completedTopics, onRunQuery, onToggleTopic }: Pick<Props, 'completedTopics' | 'onRunQuery' | 'onToggleTopic'>) {
-  return <><ViewHeader eyebrow="Phase 4 · guided learning" title="Learning Topics" description="Work through focused lessons and mark concepts as complete." /><div className="min-h-0 flex-1 overflow-y-auto p-5"><div className="mx-auto max-w-5xl"><div className="mb-4 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><Trophy size={17} className="text-[#f6c76f]" /><div className="min-w-0 flex-1"><div className="flex justify-between text-[10px]"><span className="font-semibold">Course progress</span><span className="text-[var(--muted)]">{completedTopics.size} of {LEARNING_TOPICS.length}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]"><div className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--violet))]" style={{ width: `${(completedTopics.size / LEARNING_TOPICS.length) * 100}%` }} /></div></div></div><div className="grid gap-3 lg:grid-cols-2">{LEARNING_TOPICS.map((topic, index) => { const complete = completedTopics.has(topic.id); return <div key={topic.id} className={`rounded-xl border p-4 ${complete ? 'border-[color:rgb(72_213_151_/_28%)] bg-[color:rgb(72_213_151_/_5%)]' : 'border-[var(--border)] bg-[var(--surface)]'}`}><div className="flex items-start gap-3"><button type="button" onClick={() => onToggleTopic(topic.id, !complete)} aria-label={`${complete ? 'Mark incomplete' : 'Mark complete'}: ${topic.title}`} className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${complete ? 'border-[var(--green)] bg-[var(--green)] text-[#07130e]' : 'border-[var(--border-bright)] text-[var(--muted)]'}`}>{complete ? <Check size={13} /> : <span className="text-[9px]">{index + 1}</span>}</button><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><h2 className="text-xs font-bold">{topic.title}</h2><span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[8px] text-[var(--muted)]">{topic.level}</span></div><p className="mt-2 text-[10px] leading-4 text-[var(--muted-bright)]">{topic.description}</p><div className="mt-3 flex flex-wrap gap-1.5">{topic.concepts.map((concept) => <span key={concept} className="rounded border border-[color:rgb(109_141_255_/_20%)] bg-[color:rgb(109_141_255_/_7%)] px-1.5 py-0.5 font-mono text-[8px] text-[var(--blue-bright)]">{concept}</span>)}</div><div className="mt-3"><RunButton onClick={() => onRunQuery(topic.query)} label="Try lesson" /></div></div></div></div>; })}</div></div></div></>;
+// Kept as a compact fallback for older learning-path snapshots.
+// oxlint-disable-next-line no-unused-vars
+function LegacyTopicsView({
+  completedTopics,
+  onRunQuery,
+  onToggleTopic,
+}: Pick<Props, 'completedTopics' | 'onRunQuery' | 'onToggleTopic'>) {
+  return (
+    <>
+      <ViewHeader
+        eyebrow="Phase 4 · guided learning"
+        title="Learning Topics"
+        description="Work through focused lessons and mark concepts as complete."
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <Trophy size={17} className="text-[#f6c76f]" />
+            <div className="min-w-0 flex-1">
+              <div className="flex justify-between text-[10px]">
+                <span className="font-semibold">Course progress</span>
+                <span className="text-[var(--muted)]">
+                  {completedTopics.size} of {LEARNING_TOPICS.length}
+                </span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--violet))]"
+                  style={{
+                    width: `${(completedTopics.size / LEARNING_TOPICS.length) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {LEARNING_TOPICS.map((topic, index) => {
+              const complete = completedTopics.has(topic.id);
+              return (
+                <div
+                  key={topic.id}
+                  className={`rounded-xl border p-4 ${complete ? 'border-[color:rgb(72_213_151_/_28%)] bg-[color:rgb(72_213_151_/_5%)]' : 'border-[var(--border)] bg-[var(--surface)]'}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onToggleTopic(topic.id, !complete)}
+                      aria-label={`${complete ? 'Mark incomplete' : 'Mark complete'}: ${topic.title}`}
+                      className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${complete ? 'border-[var(--green)] bg-[var(--green)] text-[#07130e]' : 'border-[var(--border-bright)] text-[var(--muted)]'}`}
+                    >
+                      {complete ? (
+                        <Check size={13} />
+                      ) : (
+                        <span className="text-[9px]">{index + 1}</span>
+                      )}
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <h2 className="text-xs font-bold">{topic.title}</h2>
+                        <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[8px] text-[var(--muted)]">
+                          {topic.level}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[10px] leading-4 text-[var(--muted-bright)]">
+                        {topic.description}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {topic.concepts.map((concept) => (
+                          <span
+                            key={concept}
+                            className="rounded border border-[color:rgb(109_141_255_/_20%)] bg-[color:rgb(109_141_255_/_7%)] px-1.5 py-0.5 font-mono text-[8px] text-[var(--blue-bright)]"
+                          >
+                            {concept}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="mt-3">
+                        <RunButton
+                          onClick={() => onRunQuery(topic.query)}
+                          label="Try lesson"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
-function TopicsView({ completedTopics, onRunQuery, onToggleTopic, onExplainQuery }: Pick<Props, 'completedTopics' | 'onRunQuery' | 'onToggleTopic' | 'onExplainQuery'>) {
-  const firstIncomplete = LEARNING_TOPICS.find((topic) => !completedTopics.has(topic.id)) ?? LEARNING_TOPICS[0];
+function TopicsView({
+  completedTopics,
+  onRunQuery,
+  onToggleTopic,
+  onExplainQuery,
+}: Pick<
+  Props,
+  'completedTopics' | 'onRunQuery' | 'onToggleTopic' | 'onExplainQuery'
+>) {
+  const firstIncomplete =
+    LEARNING_TOPICS.find((topic) => !completedTopics.has(topic.id)) ??
+    LEARNING_TOPICS[0];
   const [selectedId, setSelectedId] = useState(firstIncomplete.id);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [showHint, setShowHint] = useState(false);
-  const topic = LEARNING_TOPICS.find((item) => item.id === selectedId) ?? firstIncomplete;
+  const topic =
+    LEARNING_TOPICS.find((item) => item.id === selectedId) ?? firstIncomplete;
   const answer = answers[topic.id];
-  const categories = ['SQL Basics', 'Querying', 'Database Design', 'Transactions'] as const;
+  const categories = [
+    'SQL Basics',
+    'Querying',
+    'Database Design',
+    'Transactions',
+  ] as const;
   const complete = completedTopics.has(topic.id);
-  const chooseTopic = (id: string) => { setSelectedId(id); setShowHint(false); };
-  const chooseAnswer = (index: number) => { setAnswers((current) => ({ ...current, [topic.id]: index })); if (index === topic.quiz.correct && !complete) onToggleTopic(topic.id, true); };
+  const chooseTopic = (id: string) => {
+    setSelectedId(id);
+    setShowHint(false);
+  };
+  const chooseAnswer = (index: number) => {
+    setAnswers((current) => ({ ...current, [topic.id]: index }));
+    if (index === topic.quiz.correct && !complete)
+      onToggleTopic(topic.id, true);
+  };
 
-  return <><ViewHeader eyebrow="Phase 8 · adaptive curriculum" title="Learning Path" description="Study a focused lesson, run its challenge, ask the mentor, and complete a quick check." /><div className="flex min-h-0 flex-1 overflow-hidden">
-    <div className="w-60 shrink-0 overflow-y-auto border-r border-[var(--border)] bg-[color:rgb(14_19_29_/_60%)] p-3"><div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"><div className="flex items-center justify-between text-[9px]"><span className="font-semibold">Course progress</span><span className="text-[var(--muted)]">{completedTopics.size}/{LEARNING_TOPICS.length}</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--surface-muted)]"><div className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--violet))]" style={{ width: `${(completedTopics.size / LEARNING_TOPICS.length) * 100}%` }} /></div></div>{categories.map((category) => <div key={category} className="mb-4"><p className="px-2 pb-1.5 text-[8px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{category}</p><div className="space-y-1">{LEARNING_TOPICS.filter((item) => item.category === category).map((item) => <button key={item.id} type="button" onClick={() => chooseTopic(item.id)} className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition ${item.id === topic.id ? 'border-[color:rgb(109_141_255_/_30%)] bg-[color:rgb(109_141_255_/_10%)]' : 'border-transparent hover:bg-[var(--surface-raised)]'}`}><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${completedTopics.has(item.id) ? 'border-[var(--green)] bg-[var(--green)] text-[#07130e]' : 'border-[var(--border-bright)] text-[var(--muted)]'}`}>{completedTopics.has(item.id) ? <Check size={10} /> : <BookOpen size={9} />}</span><span className="min-w-0 flex-1 truncate text-[9px] font-medium text-[var(--muted-bright)]">{item.title}</span><ChevronRight size={10} className="text-[var(--muted)]" /></button>)}</div></div>)}</div>
-    <div className="min-w-0 flex-1 overflow-y-auto p-5"><div className="mx-auto max-w-3xl"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[8px] text-[var(--muted)]">{topic.category}</span><span className="text-[8px] text-[var(--muted)]">{topic.level}</span></div><h2 className="mt-2 text-lg font-bold">{topic.title}</h2><p className="mt-2 max-w-2xl text-[11px] leading-5 text-[var(--muted-bright)]">{topic.description}</p></div><button type="button" onClick={() => onToggleTopic(topic.id, !complete)} className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[9px] font-semibold ${complete ? 'border-[color:rgb(72_213_151_/_28%)] bg-[color:rgb(72_213_151_/_7%)] text-[var(--green)]' : 'border-[var(--border)] text-[var(--muted-bright)]'}`}>{complete ? <CheckCircle2 size={12} /> : <Check size={12} />}{complete ? 'Completed' : 'Mark complete'}</button></div>
-      <div className="mt-5 rounded-xl border border-[color:rgb(109_141_255_/_22%)] bg-[color:rgb(109_141_255_/_6%)] p-4"><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--blue-bright)]"><Target size={13} /> Learning objective</div><p className="mt-2 text-xs text-[var(--text)]">{topic.objective}</p><div className="mt-3 flex flex-wrap gap-1.5">{topic.concepts.map((concept) => <span key={concept} className="rounded border border-[color:rgb(109_141_255_/_20%)] bg-[#0a0f17] px-2 py-1 font-mono text-[8px] text-[var(--blue-bright)]">{concept}</span>)}</div></div>
-      <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3"><p className="flex items-center gap-2 text-xs font-bold"><Play size={13} className="text-[var(--green)]" /> Worked example</p><div className="flex gap-2"><button type="button" onClick={() => onExplainQuery(topic.query)} className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[9px] text-[var(--muted-bright)]"><BrainCircuit size={11} /> Ask mentor</button><RunButton onClick={() => onRunQuery(topic.query)} label="Open example" /></div></div><pre className="overflow-auto whitespace-pre-wrap bg-[#090d14] p-4 font-mono text-[10px] leading-5 text-[#c9d3e3]">{topic.query}</pre></div>
-      <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><p className="flex items-center gap-2 text-xs font-bold"><Sparkles size={13} className="text-[var(--violet)]" /> Practice challenge</p><p className="mt-2 text-[11px] leading-5 text-[var(--muted-bright)]">{topic.challenge}</p><div className="mt-3 flex flex-wrap gap-2"><RunButton onClick={() => onRunQuery(topic.challengeQuery)} label="Start challenge" /><button type="button" onClick={() => setShowHint((value) => !value)} className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[9px] text-[var(--muted-bright)]"><Lightbulb size={11} /> {showHint ? 'Hide hint' : 'Show hint'}</button></div>{showHint ? <div className="mt-3 rounded-lg border border-[color:rgb(246_199_111_/_20%)] bg-[color:rgb(246_199_111_/_6%)] p-3 text-[10px] leading-5 text-[#d7b67e]">{topic.hint}</div> : null}</div>
-      <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><p className="flex items-center gap-2 text-xs font-bold"><HelpCircle size={13} className="text-[#f6c76f]" /> Quick check</p><p className="mt-2 text-[11px] text-[var(--muted-bright)]">{topic.quiz.question}</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{topic.quiz.options.map((option, index) => { const chosen = answer === index; const correct = index === topic.quiz.correct; return <button key={option} type="button" onClick={() => chooseAnswer(index)} className={`rounded-lg border px-3 py-2.5 text-left text-[9px] transition ${chosen ? correct ? 'border-[var(--green)] bg-[color:rgb(72_213_151_/_8%)] text-[var(--green)]' : 'border-[var(--red)] bg-[color:rgb(255_107_135_/_7%)] text-[var(--red)]' : 'border-[var(--border)] text-[var(--muted-bright)] hover:border-[var(--border-bright)]'}`}>{option}</button>; })}</div>{answer !== undefined ? <p className={`mt-3 text-[10px] leading-5 ${answer === topic.quiz.correct ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>{answer === topic.quiz.correct ? 'Correct. ' : 'Not quite. '}{topic.quiz.explanation}</p> : null}</div>
-    </div></div>
-  </div></>;
+  return (
+    <>
+      <ViewHeader
+        eyebrow="Phase 8 · adaptive curriculum"
+        title="Learning Path"
+        description="Study a focused lesson, run its challenge, ask the mentor, and complete a quick check."
+      />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="w-60 shrink-0 overflow-y-auto border-r border-[var(--border)] bg-[color:rgb(14_19_29_/_60%)] p-3">
+          <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+            <div className="flex items-center justify-between text-[9px]">
+              <span className="font-semibold">Course progress</span>
+              <span className="text-[var(--muted)]">
+                {completedTopics.size}/{LEARNING_TOPICS.length}
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+              <div
+                className="h-full rounded-full bg-[linear-gradient(90deg,var(--blue),var(--violet))]"
+                style={{
+                  width: `${(completedTopics.size / LEARNING_TOPICS.length) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
+          {categories.map((category) => (
+            <div key={category} className="mb-4">
+              <p className="px-2 pb-1.5 text-[8px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                {category}
+              </p>
+              <div className="space-y-1">
+                {LEARNING_TOPICS.filter(
+                  (item) => item.category === category,
+                ).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => chooseTopic(item.id)}
+                    className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition ${item.id === topic.id ? 'border-[color:rgb(109_141_255_/_30%)] bg-[color:rgb(109_141_255_/_10%)]' : 'border-transparent hover:bg-[var(--surface-raised)]'}`}
+                  >
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${completedTopics.has(item.id) ? 'border-[var(--green)] bg-[var(--green)] text-[#07130e]' : 'border-[var(--border-bright)] text-[var(--muted)]'}`}
+                    >
+                      {completedTopics.has(item.id) ? (
+                        <Check size={10} />
+                      ) : (
+                        <BookOpen size={9} />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[9px] font-medium text-[var(--muted-bright)]">
+                      {item.title}
+                    </span>
+                    <ChevronRight size={10} className="text-[var(--muted)]" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="min-w-0 flex-1 overflow-y-auto p-5">
+          <div className="mx-auto max-w-3xl">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[8px] text-[var(--muted)]">
+                    {topic.category}
+                  </span>
+                  <span className="text-[8px] text-[var(--muted)]">
+                    {topic.level}
+                  </span>
+                </div>
+                <h2 className="mt-2 text-lg font-bold">{topic.title}</h2>
+                <p className="mt-2 max-w-2xl text-[11px] leading-5 text-[var(--muted-bright)]">
+                  {topic.description}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onToggleTopic(topic.id, !complete)}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[9px] font-semibold ${complete ? 'border-[color:rgb(72_213_151_/_28%)] bg-[color:rgb(72_213_151_/_7%)] text-[var(--green)]' : 'border-[var(--border)] text-[var(--muted-bright)]'}`}
+              >
+                {complete ? <CheckCircle2 size={12} /> : <Check size={12} />}
+                {complete ? 'Completed' : 'Mark complete'}
+              </button>
+            </div>
+            <div className="mt-5 rounded-xl border border-[color:rgb(109_141_255_/_22%)] bg-[color:rgb(109_141_255_/_6%)] p-4">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[var(--blue-bright)]">
+                <Target size={13} /> Learning objective
+              </div>
+              <p className="mt-2 text-xs text-[var(--text)]">
+                {topic.objective}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {topic.concepts.map((concept) => (
+                  <span
+                    key={concept}
+                    className="rounded border border-[color:rgb(109_141_255_/_20%)] bg-[#0a0f17] px-2 py-1 font-mono text-[8px] text-[var(--blue-bright)]"
+                  >
+                    {concept}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+                <p className="flex items-center gap-2 text-xs font-bold">
+                  <Play size={13} className="text-[var(--green)]" /> Worked
+                  example
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onExplainQuery(topic.query)}
+                    className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[9px] text-[var(--muted-bright)]"
+                  >
+                    <BrainCircuit size={11} /> Ask mentor
+                  </button>
+                  <RunButton
+                    onClick={() => onRunQuery(topic.query)}
+                    label="Open example"
+                  />
+                </div>
+              </div>
+              <pre className="overflow-auto whitespace-pre-wrap bg-[#090d14] p-4 font-mono text-[10px] leading-5 text-[#c9d3e3]">
+                {topic.query}
+              </pre>
+            </div>
+            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+              <p className="flex items-center gap-2 text-xs font-bold">
+                <Sparkles size={13} className="text-[var(--violet)]" /> Practice
+                challenge
+              </p>
+              <p className="mt-2 text-[11px] leading-5 text-[var(--muted-bright)]">
+                {topic.challenge}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <RunButton
+                  onClick={() => onRunQuery(topic.challengeQuery)}
+                  label="Start challenge"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowHint((value) => !value)}
+                  className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[9px] text-[var(--muted-bright)]"
+                >
+                  <Lightbulb size={11} /> {showHint ? 'Hide hint' : 'Show hint'}
+                </button>
+              </div>
+              {showHint ? (
+                <div className="mt-3 rounded-lg border border-[color:rgb(246_199_111_/_20%)] bg-[color:rgb(246_199_111_/_6%)] p-3 text-[10px] leading-5 text-[#d7b67e]">
+                  {topic.hint}
+                </div>
+              ) : null}
+            </div>
+            <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+              <p className="flex items-center gap-2 text-xs font-bold">
+                <HelpCircle size={13} className="text-[#f6c76f]" /> Quick check
+              </p>
+              <p className="mt-2 text-[11px] text-[var(--muted-bright)]">
+                {topic.quiz.question}
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {topic.quiz.options.map((option, index) => {
+                  const chosen = answer === index;
+                  const correct = index === topic.quiz.correct;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => chooseAnswer(index)}
+                      className={`rounded-lg border px-3 py-2.5 text-left text-[9px] transition ${chosen ? (correct ? 'border-[var(--green)] bg-[color:rgb(72_213_151_/_8%)] text-[var(--green)]' : 'border-[var(--red)] bg-[color:rgb(255_107_135_/_7%)] text-[var(--red)]') : 'border-[var(--border)] text-[var(--muted-bright)] hover:border-[var(--border-bright)]'}`}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+              {answer !== undefined ? (
+                <p
+                  className={`mt-3 text-[10px] leading-5 ${answer === topic.quiz.correct ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}
+                >
+                  {answer === topic.quiz.correct ? 'Correct. ' : 'Not quite. '}
+                  {topic.quiz.explanation}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
 export function ProductivityWorkspace(props: Props) {
-  if (props.loading) return <section className="flex min-h-0 flex-1 items-center justify-center"><span className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--border-bright)] border-t-[var(--blue)]" /></section>;
+  if (props.loading)
+    return (
+      <section className="flex min-h-0 flex-1 items-center justify-center">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--border-bright)] border-t-[var(--blue)]" />
+      </section>
+    );
   if (props.activeView === 'dashboard') return <Dashboard {...props} />;
   if (props.activeView === 'history') return <HistoryView {...props} />;
   if (props.activeView === 'saved') return <SavedView {...props} />;
@@ -152,8 +1545,64 @@ export function ProductivityWorkspace(props: Props) {
   return <TopicsView {...props} />;
 }
 
-export function ProductivityContextPanel({ history, saved, completedTopics }: Pick<Props, 'history' | 'saved' | 'completedTopics'>) {
+export function ProductivityContextPanel({
+  history,
+  saved,
+  completedTopics,
+}: Pick<Props, 'history' | 'saved' | 'completedTopics'>) {
   const successes = history.filter((item) => item.success).length;
-  const nextTopic = LEARNING_TOPICS.find((topic) => !completedTopics.has(topic.id));
-  return <aside className="app-mentor overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)] p-4"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">Learning insights</p><div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4"><BrainCircuit size={17} className="text-[var(--blue-bright)]" /><p className="mt-3 text-xs font-bold">Phase 8 is active</p><p className="mt-2 text-[10px] leading-4 text-[var(--muted-bright)]">Your curriculum, quick checks, practice history, and recommendations now work together.</p></div>{nextTopic ? <div className="mt-3 rounded-xl border border-[color:rgb(155_124_255_/_24%)] bg-[color:rgb(155_124_255_/_6%)] p-4"><p className="text-[9px] font-bold uppercase tracking-wider text-[var(--violet)]">Continue next</p><p className="mt-2 text-xs font-semibold">{nextTopic.title}</p><p className="mt-1 text-[10px] leading-4 text-[var(--muted)]">{nextTopic.objective}</p></div> : null}<div className="mt-3 rounded-xl border border-[var(--border)] p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">Current progress</p><div className="mt-3 space-y-2 text-[11px]"><p className="flex justify-between"><span className="text-[var(--muted)]">Successful runs</span><strong>{successes}</strong></p><p className="flex justify-between"><span className="text-[var(--muted)]">Saved queries</span><strong>{saved.length}</strong></p><p className="flex justify-between"><span className="text-[var(--muted)]">Topics complete</span><strong>{completedTopics.size}/{LEARNING_TOPICS.length}</strong></p></div></div><div className="mt-3 rounded-xl border border-dashed border-[color:rgb(72_213_151_/_30%)] bg-[color:rgb(72_213_151_/_5%)] p-3 text-[10px] leading-4 text-[var(--muted-bright)]"><span className="font-semibold text-[var(--green)]">Synced.</span> Learning progress survives page refreshes.</div></aside>;
+  const nextTopic = LEARNING_TOPICS.find(
+    (topic) => !completedTopics.has(topic.id),
+  );
+  return (
+    <aside className="app-mentor overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)] p-4">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+        Learning insights
+      </p>
+      <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4">
+        <BrainCircuit size={17} className="text-[var(--blue-bright)]" />
+        <p className="mt-3 text-xs font-bold">Phase 8 is active</p>
+        <p className="mt-2 text-[10px] leading-4 text-[var(--muted-bright)]">
+          Your curriculum, quick checks, practice history, and recommendations
+          now work together.
+        </p>
+      </div>
+      {nextTopic ? (
+        <div className="mt-3 rounded-xl border border-[color:rgb(155_124_255_/_24%)] bg-[color:rgb(155_124_255_/_6%)] p-4">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--violet)]">
+            Continue next
+          </p>
+          <p className="mt-2 text-xs font-semibold">{nextTopic.title}</p>
+          <p className="mt-1 text-[10px] leading-4 text-[var(--muted)]">
+            {nextTopic.objective}
+          </p>
+        </div>
+      ) : null}
+      <div className="mt-3 rounded-xl border border-[var(--border)] p-4">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+          Current progress
+        </p>
+        <div className="mt-3 space-y-2 text-[11px]">
+          <p className="flex justify-between">
+            <span className="text-[var(--muted)]">Successful runs</span>
+            <strong>{successes}</strong>
+          </p>
+          <p className="flex justify-between">
+            <span className="text-[var(--muted)]">Saved queries</span>
+            <strong>{saved.length}</strong>
+          </p>
+          <p className="flex justify-between">
+            <span className="text-[var(--muted)]">Topics complete</span>
+            <strong>
+              {completedTopics.size}/{LEARNING_TOPICS.length}
+            </strong>
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 rounded-xl border border-dashed border-[color:rgb(72_213_151_/_30%)] bg-[color:rgb(72_213_151_/_5%)] p-3 text-[10px] leading-4 text-[var(--muted-bright)]">
+        <span className="font-semibold text-[var(--green)]">Synced.</span>{' '}
+        Learning progress survives page refreshes.
+      </div>
+    </aside>
+  );
 }
