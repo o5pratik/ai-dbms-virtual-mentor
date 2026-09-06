@@ -155,17 +155,17 @@ ORDER BY marks DESC;`,
       'Return every department name and its student_count, alphabetically.',
     hint: 'One result row per department requires grouping.',
     deepHint:
-      'Use LEFT JOIN, COUNT(s.student_id) AS student_count, and GROUP BY department_name.',
-    solution: `SELECT d.department_name, COUNT(s.student_id) AS student_count
+      'Use LEFT JOIN, COUNT(s.student_id) AS student_count, and GROUP BY dept_name.',
+    solution: `SELECT d.dept_name AS department_name, COUNT(s.student_id) AS student_count
 FROM Department AS d
 LEFT JOIN Student AS s ON s.dept_id = d.dept_id
-GROUP BY d.department_name
-ORDER BY d.department_name;`,
+GROUP BY d.dept_name
+ORDER BY d.dept_name;`,
     sql: `-- Return department_name and student_count for every department.
-SELECT d.department_name, s.student_id
+SELECT d.dept_name AS department_name, s.student_id
 FROM Department AS d
 LEFT JOIN Student AS s ON s.dept_id = d.dept_id
-ORDER BY d.department_name;`,
+ORDER BY d.dept_name;`,
   },
   {
     id: 'top-student',
@@ -191,13 +191,14 @@ ORDER BY marks DESC;`,
     topic: 'JOIN',
     prompt: 'Return each student name and department_name, sorted by name.',
     hint: 'The two tables share a department identifier.',
-    deepHint: 'Add ON d.dept_id = s.dept_id to the JOIN, then sort by s.name.',
-    solution: `SELECT s.name, d.department_name
+    deepHint:
+      'Select d.dept_name AS department_name, match the department IDs, then sort by s.name.',
+    solution: `SELECT s.name, d.dept_name AS department_name
 FROM Student AS s
 JOIN Department AS d ON d.dept_id = s.dept_id
 ORDER BY s.name;`,
     sql: `-- Match every student to a department.
-SELECT s.name, d.department_name
+SELECT s.name, d.dept_name AS department_name
 FROM Student AS s
 JOIN Department AS d
 ORDER BY s.name;`,
@@ -211,14 +212,14 @@ ORDER BY s.name;`,
       'Return department_name and average_marks rounded to 1 decimal, highest first.',
     hint: 'Calculate one aggregate value for each department group.',
     deepHint:
-      'Use ROUND(AVG(s.marks), 1) AS average_marks, GROUP BY department_name, then sort the alias descending.',
-    solution: `SELECT d.department_name, ROUND(AVG(s.marks), 1) AS average_marks
+      'Use ROUND(AVG(s.marks), 1) AS average_marks, GROUP BY dept_name, then sort the alias descending.',
+    solution: `SELECT d.dept_name AS department_name, ROUND(AVG(s.marks), 1) AS average_marks
 FROM Department AS d
 JOIN Student AS s ON s.dept_id = d.dept_id
-GROUP BY d.department_name
+GROUP BY d.dept_name
 ORDER BY average_marks DESC;`,
     sql: `-- Calculate one average_marks value per department.
-SELECT d.department_name, s.marks
+SELECT d.dept_name AS department_name, s.marks
 FROM Department AS d
 JOIN Student AS s ON s.dept_id = d.dept_id
 ORDER BY s.marks DESC;`,
@@ -292,7 +293,7 @@ export function WriteLab() {
   );
   const [ready, setReady] = useState(false);
   const [running, setRunning] = useState(false);
-  const [databaseName, setDatabaseName] = useState('PracticeDB');
+  const [databaseName, setDatabaseName] = useState('EditableDB');
   const [hasSelection, setHasSelection] = useState(false);
   const [fix, setFix] = useState<FixResponse | null>(null);
   const [fixing, setFixing] = useState(false);
@@ -461,7 +462,7 @@ export function WriteLab() {
               draft && draft.savedAt > snapshot.savedAt ? 'draft' : 'saved',
             );
             setMessage(
-              'PracticeDB and your SQL draft were restored from this device.',
+              'Your editable database and SQL draft were restored from this device.',
             );
             setReady(true);
             restored = true;
@@ -476,10 +477,10 @@ export function WriteLab() {
           if (cancelled) return;
           setSchema(response.schema ?? []);
           setMessage(
-            'PracticeDB is ready. Local recovery is enabled on this device.',
+            'EditableDB is ready with a safe copy of CollegeDB. Local recovery is enabled.',
           );
           setReady(true);
-          await persistDatabase(STARTER_SCRIPT, 'PracticeDB');
+          await persistDatabase(STARTER_SCRIPT, 'EditableDB');
         }
       } catch (caught) {
         if (!cancelled) {
@@ -644,7 +645,7 @@ export function WriteLab() {
         new CustomEvent('write-lab-progress', { detail: progress }),
       );
       setMessage(
-        `${passed ? 'Challenge passed' : 'Keep trying'} · ${(response.elapsedMs ?? 0).toFixed(1)} ms · PracticeDB was not changed.`,
+        `${passed ? 'Challenge passed' : 'Keep trying'} · ${(response.elapsedMs ?? 0).toFixed(1)} ms · EditableDB was not changed.`,
       );
     } catch (caught) {
       setError(
@@ -761,7 +762,7 @@ export function WriteLab() {
       const checkpoint = await loadPracticeCheckpoint();
       if (!checkpoint)
         throw new Error(
-          'The previous PracticeDB checkpoint is no longer available.',
+          'The previous editable-database checkpoint is no longer available.',
         );
       const response = await request(
         'import',
@@ -796,7 +797,7 @@ export function WriteLab() {
   const reset = async () => {
     if (
       !window.confirm(
-        'Reset PracticeDB and replace the saved local copy with a clean starter database?',
+        'Reset EditableDB and replace the saved local copy with a fresh CollegeDB copy?',
       )
     )
       return;
@@ -810,12 +811,12 @@ export function WriteLab() {
       if (!response.ok) throw new Error(response.error);
       setSchema(response.schema ?? []);
       setResults([]);
-      setDatabaseName('PracticeDB');
+      setDatabaseName('EditableDB');
       setSql(STARTER_SCRIPT);
       await clearPracticeSnapshot().catch(() => undefined);
-      await persistDatabase(STARTER_SCRIPT, 'PracticeDB');
+      await persistDatabase(STARTER_SCRIPT, 'EditableDB');
       setMessage(
-        'PracticeDB was reset to the starter Student and Department tables.',
+        'EditableDB was reset to fresh Department, Teacher, Course, Student, and Enrollment tables.',
       );
       setActiveTab('schema');
       setReady(true);
@@ -839,7 +840,9 @@ export function WriteLab() {
     setFixError('');
     try {
       if (file.size > 20 * 1024 * 1024)
-        throw new Error('SQLite files are limited to 20 MB in Write Lab.');
+        throw new Error(
+          'SQLite files are limited to 20 MB in Editable Playground.',
+        );
       const bytes = await file.arrayBuffer();
       await createCheckpoint(`Before opening ${file.name}`, sql, databaseName);
       const response = await request('import', { bytes }, 15000);
@@ -996,7 +999,7 @@ export function WriteLab() {
           </span>
           <span className="flex items-center gap-2 rounded-full border border-[color:rgb(72_213_151_/_22%)] bg-[color:rgb(72_213_151_/_7%)] px-3 py-1.5 text-xs font-semibold text-[var(--green)]">
             <ShieldCheck size={14} />
-            Isolated from CollegeDB
+            Master CollegeDB stays safe
           </span>
         </div>
       </div>
@@ -1060,7 +1063,7 @@ export function WriteLab() {
           <div
             className="flex h-11 shrink-0 items-center gap-5 border-b border-[var(--border)] px-4"
             role="tablist"
-            aria-label="Write Lab output"
+            aria-label="Editable Playground output"
           >
             {(['output', 'schema', 'messages'] as const).map((tab) => (
               <button
@@ -1528,8 +1531,8 @@ export function WriteLabContextPanel() {
           <FlaskConical size={18} />
         </div>
         <div>
-          <p className="text-sm font-bold">Write Lab</p>
-          <p className="text-xs text-[var(--green)]">Phase 19 · ready</p>
+          <p className="text-sm font-bold">Editable Playground</p>
+          <p className="text-xs text-[var(--green)]">Phase 20 · ready</p>
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">

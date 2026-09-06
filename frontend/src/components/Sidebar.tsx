@@ -34,7 +34,11 @@ const navigation: Array<{
 }> = [
   { label: 'Dashboard', icon: LayoutDashboard, view: 'dashboard' },
   { label: 'SQL Playground', icon: Braces, view: 'playground' as const },
-  { label: 'Write Lab', icon: FlaskConical, view: 'write-lab' as const },
+  {
+    label: 'Editable Playground',
+    icon: FlaskConical,
+    view: 'write-lab' as const,
+  },
   { label: 'Schema Explorer', icon: Boxes, view: 'schema' as const },
   { label: 'Schema Lab', icon: DatabaseZap, view: 'schema-lab' as const },
   { label: 'ER Diagram', icon: Database, view: 'er' as const },
@@ -117,10 +121,10 @@ export function Sidebar({
       <div className="mt-7 rounded-xl border border-[color:rgb(109_141_255_/_18%)] bg-[linear-gradient(145deg,rgb(109_141_255_/_9%),rgb(155_124_255_/_5%))] p-3">
         <div className="flex items-center gap-2 text-xs font-semibold">
           <GraduationCap size={15} className="text-[var(--blue-bright)]" />{' '}
-          Phase 19 workspace
+          Phase 20 workspace
         </div>
         <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">
-          Follow personalized practice insights and earn mastery badges.
+          Query CollegeDB safely or switch to an editable database copy.
         </p>
       </div>
     </aside>

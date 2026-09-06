@@ -51,11 +51,11 @@ const challengeAnswers = [
   ],
   [
     'department-counts',
-    `SELECT d.department_name, COUNT(s.student_id) AS student_count
+    `SELECT d.dept_name AS department_name, COUNT(s.student_id) AS student_count
      FROM Department AS d
      LEFT JOIN Student AS s ON s.dept_id = d.dept_id
-     GROUP BY d.department_name
-     ORDER BY d.department_name;`,
+     GROUP BY d.dept_name
+     ORDER BY d.dept_name;`,
   ],
   [
     'top-student',
@@ -63,17 +63,17 @@ const challengeAnswers = [
   ],
   [
     'student-departments',
-    `SELECT s.name, d.department_name
+    `SELECT s.name, d.dept_name AS department_name
      FROM Student AS s
      JOIN Department AS d ON d.dept_id = s.dept_id
      ORDER BY s.name;`,
   ],
   [
     'department-averages',
-    `SELECT d.department_name, ROUND(AVG(s.marks), 1) AS average_marks
+    `SELECT d.dept_name AS department_name, ROUND(AVG(s.marks), 1) AS average_marks
      FROM Department AS d
      JOIN Student AS s ON s.dept_id = d.dept_id
-     GROUP BY d.department_name
+     GROUP BY d.dept_name
      ORDER BY average_marks DESC;`,
   ],
   [
@@ -91,6 +91,51 @@ for (const [challengeId, sql] of challengeAnswers) {
   assert.equal(response.passed, true, `${challengeId} should pass.`);
 }
 
+const seededSchema = await request('schema');
+for (const table of [
+  'Department',
+  'Teacher',
+  'Course',
+  'Student',
+  'Enrollment',
+]) {
+  assert.ok(
+    seededSchema.schema.some(
+      (item) => item.type === 'table' && item.name === table,
+    ),
+    `${table} should be available in the editable CollegeDB copy.`,
+  );
+}
+
+const editableScript = await request('execute', {
+  sql: `CREATE TABLE Employee (
+          employee_id INTEGER PRIMARY KEY,
+          name TEXT NOT NULL,
+          salary REAL
+        );
+        INSERT INTO Employee VALUES (1, 'Rahul', 45000);
+        SELECT * FROM Employee;`,
+});
+assert.equal(editableScript.ok, true);
+assert.deepEqual(Array.from(editableScript.results[0].columns), [
+  'employee_id',
+  'name',
+  'salary',
+]);
+assert.deepEqual(Array.from(editableScript.results[0].values[0]), [
+  1,
+  'Rahul',
+  45000,
+]);
+const droppedTable = await request('execute', {
+  sql: 'DROP TABLE Employee;',
+});
+assert.equal(droppedTable.ok, true);
+assert.equal(
+  droppedTable.schema.some((item) => item.name === 'Employee'),
+  false,
+);
+
 const wrongAnswer = await request('grade', {
   challengeId: 'top-student',
   sql: 'SELECT name, marks FROM Student ORDER BY marks DESC;',
@@ -102,7 +147,7 @@ assert.match(wrongAnswer.feedback, /expected result has 1/i);
 const mutatingAnswer = await request('grade', {
   challengeId: 'top-student',
   sql: `WITH source(value) AS (SELECT 'Unsafe')
-        INSERT INTO Department (department_name) SELECT value FROM source;`,
+        INSERT INTO Department (dept_name) SELECT value FROM source;`,
 });
 assert.equal(mutatingAnswer.ok, true);
 assert.equal(mutatingAnswer.passed, false);
