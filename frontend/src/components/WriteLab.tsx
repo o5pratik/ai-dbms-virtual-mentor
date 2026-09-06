@@ -27,6 +27,12 @@ import {
 
 import { fixWriteQuery, type FixResponse } from '../services/api';
 import {
+  clearChallengeProgress,
+  loadChallengeProgress,
+  recordChallengeAttempt,
+  type ChallengeProgress,
+} from '../services/challenge-progress';
+import {
   clearPracticeSnapshot,
   clearPracticeCheckpoint,
   loadPracticeCheckpoint,
@@ -488,8 +494,12 @@ export function WriteLab() {
       if (!response.ok) throw new Error(response.error);
       const passed = Boolean(response.passed);
       const feedback = response.feedback ?? 'Your answer was checked.';
+      const progress = recordChallengeAttempt(activeChallenge, passed);
       setResults(response.results ?? []);
       setGradeResult({ passed, feedback });
+      window.dispatchEvent(
+        new CustomEvent('write-lab-progress', { detail: progress }),
+      );
       setMessage(
         `${passed ? 'Challenge passed' : 'Keep trying'} · ${(response.elapsedMs ?? 0).toFixed(1)} ms · PracticeDB was not changed.`,
       );
@@ -1144,6 +1154,49 @@ export function WriteLab() {
 }
 
 export function WriteLabContextPanel() {
+  const [challengeProgress, setChallengeProgress] = useState<ChallengeProgress>(
+    {},
+  );
+  const [selectedChallenge, setSelectedChallenge] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(
+      () => setChallengeProgress(loadChallengeProgress()),
+      0,
+    );
+    const updateProgress = (event: Event) => {
+      setChallengeProgress(
+        (event as CustomEvent<ChallengeProgress>).detail ??
+          loadChallengeProgress(),
+      );
+    };
+    window.addEventListener('write-lab-progress', updateProgress);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.removeEventListener('write-lab-progress', updateProgress);
+    };
+  }, []);
+
+  const completedChallenges = CHALLENGES.filter(
+    (challenge) => challengeProgress[challenge.id]?.passed,
+  ).length;
+  const completionPercent = Math.round(
+    (completedChallenges / CHALLENGES.length) * 100,
+  );
+
+  const resetProgress = () => {
+    if (!window.confirm('Clear your challenge attempts and completion badges?'))
+      return;
+    const progress = clearChallengeProgress();
+    setChallengeProgress(progress);
+    setSelectedChallenge(null);
+    window.dispatchEvent(
+      new CustomEvent('write-lab-progress', { detail: progress }),
+    );
+  };
+
   return (
     <aside className="app-mentor overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)] p-4">
       <div className="flex items-center gap-2">
@@ -1152,7 +1205,7 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Write Lab</p>
-          <p className="text-xs text-[var(--green)]">Phase 14 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 15 · ready</p>
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">
@@ -1161,41 +1214,77 @@ export function WriteLabContextPanel() {
           <p className="text-xs font-bold uppercase tracking-wider text-[#f6c76f]">
             SQL challenges
           </p>
+          <span className="ml-auto text-xs font-semibold text-[var(--muted-bright)]">
+            {completedChallenges}/{CHALLENGES.length}
+          </span>
+        </div>
+        <div className="mt-3">
+          <progress
+            aria-label="SQL challenge completion"
+            max={CHALLENGES.length}
+            value={completedChallenges}
+            className="h-1.5 w-full accent-[var(--green)]"
+          />
+          <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--muted)]">
+            <span>{completionPercent}% complete on this device</span>
+            {Object.keys(challengeProgress).length ? (
+              <button
+                type="button"
+                onClick={resetProgress}
+                className="font-semibold hover:text-[var(--text)]"
+              >
+                Reset progress
+              </button>
+            ) : null}
+          </div>
         </div>
         <div className="mt-3 space-y-2">
-          {CHALLENGES.map((challenge) => (
-            <button
-              key={challenge.id}
-              type="button"
-              onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent('write-lab-challenge', {
-                    detail: {
-                      id: challenge.id,
-                      sql: challenge.sql,
-                      title: challenge.title,
-                    },
-                  }),
-                )
-              }
-              className="w-full rounded-lg border border-[var(--border)] bg-[#0b1018] p-3 text-left hover:border-[color:rgb(246_199_111_/_38%)]"
-            >
-              <span className="flex items-center justify-between gap-2">
-                <strong className="text-sm text-[var(--text)]">
-                  {challenge.title}
-                </strong>
-                <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] text-[var(--muted)]">
-                  {challenge.difficulty}
+          {CHALLENGES.map((challenge) => {
+            const progress = challengeProgress[challenge.id];
+            return (
+              <button
+                key={challenge.id}
+                type="button"
+                onClick={() => {
+                  setSelectedChallenge(challenge.id);
+                  window.dispatchEvent(
+                    new CustomEvent('write-lab-challenge', {
+                      detail: {
+                        id: challenge.id,
+                        sql: challenge.sql,
+                        title: challenge.title,
+                      },
+                    }),
+                  );
+                }}
+                className={`w-full rounded-lg border bg-[#0b1018] p-3 text-left ${progress?.passed ? 'border-[color:rgb(72_213_151_/_38%)]' : selectedChallenge === challenge.id ? 'border-[color:rgb(246_199_111_/_45%)]' : 'border-[var(--border)] hover:border-[color:rgb(246_199_111_/_38%)]'}`}
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <strong className="flex items-center gap-1.5 text-sm text-[var(--text)]">
+                    {progress?.passed ? (
+                      <CheckCircle2 size={14} className="text-[var(--green)]" />
+                    ) : null}
+                    {challenge.title}
+                  </strong>
+                  <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] text-[var(--muted)]">
+                    {challenge.difficulty}
+                  </span>
                 </span>
-              </span>
-              <span className="mt-1.5 block text-xs leading-5 text-[var(--muted-bright)]">
-                {challenge.prompt}
-              </span>
-              <span className="mt-1 block text-[11px] leading-4 text-[var(--muted)]">
-                Hint: {challenge.hint}
-              </span>
-            </button>
-          ))}
+                <span className="mt-1.5 block text-xs leading-5 text-[var(--muted-bright)]">
+                  {challenge.prompt}
+                </span>
+                <span className="mt-1 flex items-center justify-between gap-2 text-[11px] leading-4 text-[var(--muted)]">
+                  <span>Hint: {challenge.hint}</span>
+                  {progress ? (
+                    <span className="shrink-0 font-semibold">
+                      {progress.attempts} attempt
+                      {progress.attempts === 1 ? '' : 's'}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4">

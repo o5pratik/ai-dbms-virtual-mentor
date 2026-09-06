@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 14 adds guided SQL challenges with automatic result grading and targeted hints, alongside one-click PracticeDB checkpoints, device-local autosave, schema-aware mentor repairs, SQLite file import, selected-statement execution, adaptive curriculum, skill analytics, real execution plans, custom schema analysis, and persistent learning tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 15 adds device-local challenge progress, attempt counts, completion badges, and an overall progress meter alongside guided result grading, one-click PracticeDB checkpoints, device-local autosave, schema-aware mentor repairs, SQLite file import, selected-statement execution, adaptive curriculum, skill analytics, real execution plans, custom schema analysis, and persistent learning tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -21,6 +21,7 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Productivity:** D1-backed history, saved SQL, learning progress, practice analytics, and CSV/JSON export
 - **Write Lab:** browser-isolated SQLite for DDL, DML, multi-statement scripts, transactions, selected-statement execution, `.db`/`.sqlite` import, schema inspection, reset, timeout protection, and `.sqlite` export
 - **Challenge grader:** three guided SQL tasks evaluated against a fresh seeded database without changing the learner's active PracticeDB
+- **Challenge progress:** device-local attempt history, completion badges, progress percentage, and reset controls
 - **Security:** server-only AI credentials, read-only SQLite connection, statement authorizer, row and execution limits
 
 The web entry points are in `app/` for the Sites-compatible Vite runtime. Reusable product UI and services are in `frontend/src/`. Hosted API routes live under `app/api/`; matching local FastAPI implementations are separated under `backend/`.
@@ -138,3 +139,4 @@ npm run build
 11. **Completed — Phase 12:** automatic local PracticeDB snapshots, SQL draft recovery, and reset-safe saved state.
 12. **Completed — Phase 13:** pre-run database checkpoints and one-click undo for scripts, resets, and SQLite imports.
 13. **Completed — Phase 14:** guided SQL challenges, isolated result-based grading, targeted feedback, and starter hints.
+14. **Completed — Phase 15:** persistent challenge attempts, completion badges, progress tracking, and reset controls.
