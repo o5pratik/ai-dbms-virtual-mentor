@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 18 adds cloud-synced challenge progress with automatic merging and a device-local fallback, alongside progressive coaching, a six-step graded path, PracticeDB checkpoints, autosave, schema-aware mentor repairs, SQLite file import, adaptive curriculum, skill analytics, execution plans, and persistent learning tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 19 adds challenge mastery insights, personalized practice recommendations, and milestone badges, alongside cloud-synced progress, progressive coaching, a six-step graded path, PracticeDB checkpoints, autosave, schema-aware mentor repairs, SQLite file import, adaptive curriculum, skill analytics, execution plans, and persistent learning tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -22,6 +22,7 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Write Lab:** browser-isolated SQLite for DDL, DML, multi-statement scripts, transactions, selected-statement execution, `.db`/`.sqlite` import, schema inspection, reset, timeout protection, and `.sqlite` export
 - **Challenge grader:** six guided SQL tasks evaluated against a fresh seeded database without changing the learner's active PracticeDB
 - **Challenge progress:** D1-backed attempt and completion sync with automatic device merging, offline fallback, progress percentage, and reset controls
+- **Mastery insights:** challenge accuracy, attempt totals, first-try wins, personalized retry recommendations, and three milestone badges
 - **Progressive coaching:** stronger retry hints and reviewed solution reveal after three failed challenge checks
 - **Security:** server-only AI credentials, read-only SQLite connection, statement authorizer, row and execution limits
 
@@ -145,3 +146,4 @@ npm run build
 15. **Completed — Phase 16:** six-level challenge path covering filtering, sorting, joins, aggregation, and subqueries with guided next-step navigation.
 16. **Completed — Phase 17:** progressive retry hints, backward-compatible failure tracking, and reviewed solution reveal after three failed checks.
 17. **Completed — Phase 18:** cloud-synced challenge attempts and completions with automatic local merging and an offline device fallback.
+18. **Completed — Phase 19:** challenge mastery insights, personalized retry recommendations, and milestone achievement badges.
