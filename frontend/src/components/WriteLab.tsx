@@ -12,10 +12,12 @@ import {
   Clipboard,
   CodeXml,
   Download,
+  Eye,
   FileCode2,
   FileUp,
   FlaskConical,
   HardDrive,
+  Lightbulb,
   Play,
   RotateCcw,
   ShieldCheck,
@@ -119,7 +121,12 @@ const CHALLENGES = [
     difficulty: 'Beginner',
     topic: 'Filtering',
     prompt: 'Return name and marks for students above 80, highest mark first.',
-    hint: 'Use WHERE marks > 80 and ORDER BY marks DESC.',
+    hint: 'Filter the rows before sorting the result.',
+    deepHint: 'Use WHERE marks > 80 and ORDER BY marks DESC.',
+    solution: `SELECT name, marks
+FROM Student
+WHERE marks > 80
+ORDER BY marks DESC;`,
     sql: `-- Return students with marks above 80, highest first.
 SELECT name, marks
 FROM Student
@@ -133,7 +140,14 @@ ORDER BY marks DESC;`,
     topic: 'Aggregation',
     prompt:
       'Return every department name and its student_count, alphabetically.',
-    hint: 'Use LEFT JOIN, COUNT(student_id), GROUP BY, and an alias.',
+    hint: 'One result row per department requires grouping.',
+    deepHint:
+      'Use LEFT JOIN, COUNT(s.student_id) AS student_count, and GROUP BY department_name.',
+    solution: `SELECT d.department_name, COUNT(s.student_id) AS student_count
+FROM Department AS d
+LEFT JOIN Student AS s ON s.dept_id = d.dept_id
+GROUP BY d.department_name
+ORDER BY d.department_name;`,
     sql: `-- Return department_name and student_count for every department.
 SELECT d.department_name, s.student_id
 FROM Department AS d
@@ -146,7 +160,12 @@ ORDER BY d.department_name;`,
     difficulty: 'Beginner',
     topic: 'Sorting',
     prompt: 'Return only the name and marks of the highest-scoring student.',
-    hint: 'Sort marks descending, then limit the result to one row.',
+    hint: 'Sorting can place the maximum mark in the first row.',
+    deepHint: 'Use ORDER BY marks DESC followed by LIMIT 1.',
+    solution: `SELECT name, marks
+FROM Student
+ORDER BY marks DESC
+LIMIT 1;`,
     sql: `-- Return only the highest-scoring student.
 SELECT name, marks
 FROM Student
@@ -158,7 +177,12 @@ ORDER BY marks DESC;`,
     difficulty: 'Intermediate',
     topic: 'JOIN',
     prompt: 'Return each student name and department_name, sorted by name.',
-    hint: 'Join Student and Department where their dept_id values match.',
+    hint: 'The two tables share a department identifier.',
+    deepHint: 'Add ON d.dept_id = s.dept_id to the JOIN, then sort by s.name.',
+    solution: `SELECT s.name, d.department_name
+FROM Student AS s
+JOIN Department AS d ON d.dept_id = s.dept_id
+ORDER BY s.name;`,
     sql: `-- Match every student to a department.
 SELECT s.name, d.department_name
 FROM Student AS s
@@ -172,7 +196,14 @@ ORDER BY s.name;`,
     topic: 'Aggregation',
     prompt:
       'Return department_name and average_marks rounded to 1 decimal, highest first.',
-    hint: 'Combine JOIN, AVG, ROUND, GROUP BY, an alias, and ORDER BY.',
+    hint: 'Calculate one aggregate value for each department group.',
+    deepHint:
+      'Use ROUND(AVG(s.marks), 1) AS average_marks, GROUP BY department_name, then sort the alias descending.',
+    solution: `SELECT d.department_name, ROUND(AVG(s.marks), 1) AS average_marks
+FROM Department AS d
+JOIN Student AS s ON s.dept_id = d.dept_id
+GROUP BY d.department_name
+ORDER BY average_marks DESC;`,
     sql: `-- Calculate one average_marks value per department.
 SELECT d.department_name, s.marks
 FROM Department AS d
@@ -186,7 +217,13 @@ ORDER BY s.marks DESC;`,
     topic: 'Subquery',
     prompt:
       'Return name and marks for students above the overall average, highest first.',
-    hint: 'Compare marks with a scalar subquery that calculates AVG(marks).',
+    hint: 'The comparison value can come from a query inside WHERE.',
+    deepHint:
+      'Compare marks with (SELECT AVG(marks) FROM Student), then sort descending.',
+    solution: `SELECT name, marks
+FROM Student
+WHERE marks > (SELECT AVG(marks) FROM Student)
+ORDER BY marks DESC;`,
     sql: `-- Return students whose marks exceed the overall average.
 SELECT name, marks
 FROM Student
@@ -244,7 +281,9 @@ export function WriteLab() {
     passed: boolean;
     feedback: string;
     nextChallengeId?: string;
+    failedAttempts?: number;
   } | null>(null);
+  const [solutionVisible, setSolutionVisible] = useState(false);
   const workerRef = useRef<Worker | null>(null);
   const selectionReaderRef = useRef<(() => string) | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -461,6 +500,7 @@ export function WriteLab() {
         setSql(nextSql);
         setActiveChallenge(null);
         setGradeResult(null);
+        setSolutionVisible(false);
         setError('');
         setFix(null);
         setFixError('');
@@ -480,6 +520,7 @@ export function WriteLab() {
       setSql(detail.sql);
       setActiveChallenge(detail.id);
       setGradeResult(null);
+      setSolutionVisible(false);
       setError('');
       setFix(null);
       setFixError('');
@@ -501,6 +542,7 @@ export function WriteLab() {
     setFix(null);
     setFixError('');
     setGradeResult(null);
+    setSolutionVisible(false);
     setLastExecutedSql(script);
     setActiveTab('output');
     try {
@@ -542,6 +584,7 @@ export function WriteLab() {
     setFix(null);
     setFixError('');
     setGradeResult(null);
+    setSolutionVisible(false);
     setActiveTab('output');
     try {
       const response = await request(
@@ -567,6 +610,7 @@ export function WriteLab() {
         passed,
         feedback,
         nextChallengeId: nextChallenge?.id,
+        failedAttempts: progress[activeChallenge]?.failedAttempts ?? 0,
       });
       window.dispatchEvent(
         new CustomEvent('write-lab-progress', { detail: progress }),
@@ -591,6 +635,21 @@ export function WriteLab() {
       (challenge) => challenge.id === gradeResult?.nextChallengeId,
     );
     if (nextChallenge) dispatchChallenge(nextChallenge);
+  };
+
+  const activeChallengeDefinition = CHALLENGES.find(
+    (challenge) => challenge.id === activeChallenge,
+  );
+
+  const applyChallengeSolution = () => {
+    if (!activeChallengeDefinition) return;
+    setSql(activeChallengeDefinition.solution);
+    setGradeResult(null);
+    setSolutionVisible(false);
+    setResults([]);
+    setMessage(
+      'Reviewed solution loaded in the editor. Check the answer to verify its result.',
+    );
   };
   useEffect(() => {
     runRef.current = (script) => {
@@ -654,6 +713,7 @@ export function WriteLab() {
   const editSql = (value: string) => {
     setSql(value);
     setGradeResult(null);
+    setSolutionVisible(false);
     if (error || fix || fixError) {
       setError('');
       setFix(null);
@@ -1026,6 +1086,74 @@ export function WriteLab() {
                             <ArrowRight size={13} />
                           </button>
                         ) : null}
+                        {!gradeResult.passed && activeChallengeDefinition ? (
+                          <div className="mt-3 rounded-lg border border-[color:rgb(246_199_111_/_22%)] bg-black/10 p-3">
+                            <p className="flex items-start gap-2 text-xs leading-5 text-[var(--muted-bright)]">
+                              <Lightbulb
+                                size={14}
+                                className="mt-0.5 shrink-0 text-[#f6c76f]"
+                              />
+                              {gradeResult.failedAttempts &&
+                              gradeResult.failedAttempts > 1
+                                ? activeChallengeDefinition.deepHint
+                                : activeChallengeDefinition.hint}
+                            </p>
+                            {(gradeResult.failedAttempts ?? 0) >= 3 ? (
+                              <div className="mt-3">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSolutionVisible((visible) => !visible)
+                                  }
+                                  className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]"
+                                >
+                                  <Eye size={13} />
+                                  {solutionVisible
+                                    ? 'Hide solution'
+                                    : 'Reveal solution'}
+                                </button>
+                                {solutionVisible ? (
+                                  <div className="mt-3">
+                                    <pre className="overflow-auto rounded-lg border border-[var(--border)] bg-[#080d14] p-3 font-mono text-xs leading-5 text-[var(--muted-bright)]">
+                                      {activeChallengeDefinition.solution}
+                                    </pre>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={applyChallengeSolution}
+                                        className="flex items-center gap-1.5 rounded-lg bg-[var(--blue)] px-3 py-2 text-xs font-semibold text-white hover:brightness-110"
+                                      >
+                                        <Check size={13} />
+                                        Load in editor
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void navigator.clipboard.writeText(
+                                            activeChallengeDefinition.solution,
+                                          )
+                                        }
+                                        className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--muted-bright)] hover:bg-[var(--surface-raised)]"
+                                      >
+                                        <Clipboard size={13} />
+                                        Copy
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-[11px] text-[var(--muted)]">
+                                {3 - (gradeResult.failedAttempts ?? 0)} more
+                                failed{' '}
+                                {3 - (gradeResult.failedAttempts ?? 0) === 1
+                                  ? 'check'
+                                  : 'checks'}{' '}
+                                unlocks the reviewed solution.
+                              </p>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </section>
@@ -1293,7 +1421,7 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Write Lab</p>
-          <p className="text-xs text-[var(--green)]">Phase 16 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 17 · ready</p>
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">

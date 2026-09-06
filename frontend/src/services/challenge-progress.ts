@@ -1,5 +1,6 @@
 export type ChallengeProgressEntry = {
   attempts: number;
+  failedAttempts: number;
   passed: boolean;
   passedAt: number | null;
   lastAttemptAt: number;
@@ -33,6 +34,13 @@ export function loadChallengeProgress(): ChallengeProgress {
                 challengeId,
                 {
                   attempts: Number(entry.attempts),
+                  failedAttempts:
+                    typeof entry.failedAttempts === 'number' &&
+                    entry.failedAttempts >= 0
+                      ? Math.floor(entry.failedAttempts)
+                      : entry.passed
+                        ? Math.max(0, Number(entry.attempts) - 1)
+                        : Number(entry.attempts),
                   passed: entry.passed,
                   passedAt:
                     typeof entry.passedAt === 'number' ? entry.passedAt : null,
@@ -62,6 +70,7 @@ export function recordChallengeAttempt(
     ...progress,
     [challengeId]: {
       attempts: (previous?.attempts ?? 0) + 1,
+      failedAttempts: (previous?.failedAttempts ?? 0) + (passed ? 0 : 1),
       passed: nextPassed,
       passedAt: previous?.passedAt ?? (passed ? attemptedAt : null),
       lastAttemptAt: attemptedAt,

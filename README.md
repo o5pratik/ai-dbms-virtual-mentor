@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 16 expands the graded learning path to filtering, sorting, joins, aggregation, and subqueries with one-click challenge progression, alongside device-local completion tracking, PracticeDB checkpoints, autosave, schema-aware mentor repairs, SQLite file import, adaptive curriculum, skill analytics, execution plans, and persistent learning tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 17 adds progressive challenge hints and reviewed solution unlocks after repeated failed checks, alongside a six-step graded path, device-local completion tracking, PracticeDB checkpoints, autosave, schema-aware mentor repairs, SQLite file import, adaptive curriculum, skill analytics, execution plans, and persistent learning tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -22,6 +22,7 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Write Lab:** browser-isolated SQLite for DDL, DML, multi-statement scripts, transactions, selected-statement execution, `.db`/`.sqlite` import, schema inspection, reset, timeout protection, and `.sqlite` export
 - **Challenge grader:** six guided SQL tasks evaluated against a fresh seeded database without changing the learner's active PracticeDB
 - **Challenge progress:** device-local attempt history, completion badges, progress percentage, and reset controls
+- **Progressive coaching:** stronger retry hints and reviewed solution reveal after three failed challenge checks
 - **Security:** server-only AI credentials, read-only SQLite connection, statement authorizer, row and execution limits
 
 The web entry points are in `app/` for the Sites-compatible Vite runtime. Reusable product UI and services are in `frontend/src/`. Hosted API routes live under `app/api/`; matching local FastAPI implementations are separated under `backend/`.
@@ -141,3 +142,4 @@ npm run build
 13. **Completed — Phase 14:** guided SQL challenges, isolated result-based grading, targeted feedback, and starter hints.
 14. **Completed — Phase 15:** persistent challenge attempts, completion badges, progress tracking, and reset controls.
 15. **Completed — Phase 16:** six-level challenge path covering filtering, sorting, joins, aggregation, and subqueries with guided next-step navigation.
+16. **Completed — Phase 17:** progressive retry hints, backward-compatible failure tracking, and reviewed solution reveal after three failed checks.
