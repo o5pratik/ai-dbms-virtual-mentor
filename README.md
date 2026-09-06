@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 20 adds a two-mode SQL Playground: query the protected CollegeDB or switch to an editable, locally recoverable copy for DDL, DML, and transactions. It also includes challenge mastery insights, cloud-synced progress, progressive coaching, a six-step graded path, schema-aware mentor repairs, SQLite file import, adaptive curriculum, execution plans, and persistent learning tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 21 adds a live ER diagram for every editable schema, refreshed from the real browser database after table and relationship changes. The two-mode SQL Playground can query the protected CollegeDB or switch to an editable, locally recoverable copy for DDL, DML, and transactions. It also includes challenge mastery insights, cloud-synced progress, progressive coaching, a six-step graded path, schema-aware mentor repairs, SQLite file import, adaptive curriculum, execution plans, and persistent learning tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -149,3 +149,4 @@ npm run build
 17. **Completed — Phase 18:** cloud-synced challenge attempts and completions with automatic local merging and an offline device fallback.
 18. **Completed — Phase 19:** challenge mastery insights, personalized retry recommendations, and milestone achievement badges.
 19. **Completed — Phase 20:** in-place Playground mode switching between protected CollegeDB queries and a full editable CollegeDB copy with DDL, DML, recovery, reset, import, and export.
+20. **Completed — Phase 21:** live ER diagrams for editable schemas, generated from current SQLite metadata with primary keys, foreign keys, row counts, and relationship links.

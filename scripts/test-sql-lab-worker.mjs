@@ -92,6 +92,8 @@ for (const [challengeId, sql] of challengeAnswers) {
 }
 
 const seededSchema = await request('schema');
+assert.equal(seededSchema.diagram.tables.length, 5);
+assert.equal(seededSchema.diagram.relationships.length, 5);
 for (const table of [
   'Department',
   'Teacher',
@@ -111,9 +113,10 @@ const editableScript = await request('execute', {
   sql: `CREATE TABLE Employee (
           employee_id INTEGER PRIMARY KEY,
           name TEXT NOT NULL,
-          salary REAL
+          salary REAL,
+          dept_id INTEGER REFERENCES Department(dept_id)
         );
-        INSERT INTO Employee VALUES (1, 'Rahul', 45000);
+        INSERT INTO Employee VALUES (1, 'Rahul', 45000, 1);
         SELECT * FROM Employee;`,
 });
 assert.equal(editableScript.ok, true);
@@ -121,18 +124,43 @@ assert.deepEqual(Array.from(editableScript.results[0].columns), [
   'employee_id',
   'name',
   'salary',
+  'dept_id',
 ]);
 assert.deepEqual(Array.from(editableScript.results[0].values[0]), [
   1,
   'Rahul',
   45000,
+  1,
 ]);
+const employeeDiagram = editableScript.diagram.tables.find(
+  (table) => table.name === 'Employee',
+);
+assert.ok(employeeDiagram, 'The live ER diagram should include new tables.');
+assert.equal(employeeDiagram.row_count, 1);
+assert.equal(employeeDiagram.columns[0].primary_key, true);
+const employeeDepartmentKey = employeeDiagram.columns.find(
+  (column) => column.name === 'dept_id',
+).foreign_key;
+assert.equal(employeeDepartmentKey.table, 'Department');
+assert.equal(employeeDepartmentKey.column, 'dept_id');
+assert.ok(
+  editableScript.diagram.relationships.some(
+    (relationship) =>
+      relationship.from_table === 'Employee' &&
+      relationship.to_table === 'Department',
+  ),
+  'The live ER diagram should map new foreign keys.',
+);
 const droppedTable = await request('execute', {
   sql: 'DROP TABLE Employee;',
 });
 assert.equal(droppedTable.ok, true);
 assert.equal(
   droppedTable.schema.some((item) => item.name === 'Employee'),
+  false,
+);
+assert.equal(
+  droppedTable.diagram.tables.some((table) => table.name === 'Employee'),
   false,
 );
 
