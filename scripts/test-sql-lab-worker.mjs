@@ -61,6 +61,28 @@ const challengeAnswers = [
     'top-student',
     'SELECT name, marks FROM Student ORDER BY marks DESC LIMIT 1;',
   ],
+  [
+    'student-departments',
+    `SELECT s.name, d.department_name
+     FROM Student AS s
+     JOIN Department AS d ON d.dept_id = s.dept_id
+     ORDER BY s.name;`,
+  ],
+  [
+    'department-averages',
+    `SELECT d.department_name, ROUND(AVG(s.marks), 1) AS average_marks
+     FROM Department AS d
+     JOIN Student AS s ON s.dept_id = d.dept_id
+     GROUP BY d.department_name
+     ORDER BY average_marks DESC;`,
+  ],
+  [
+    'above-average-students',
+    `SELECT name, marks
+     FROM Student
+     WHERE marks > (SELECT AVG(marks) FROM Student)
+     ORDER BY marks DESC;`,
+  ],
 ];
 
 for (const [challengeId, sql] of challengeAnswers) {

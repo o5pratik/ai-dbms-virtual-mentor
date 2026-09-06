@@ -51,6 +51,35 @@ const CHALLENGES = {
     expectedSql: 'SELECT name, marks FROM Student ORDER BY marks DESC LIMIT 1;',
     success: 'Correct — the query returns only the highest-scoring student.',
   },
+  'student-departments': {
+    expectedSql: `
+      SELECT s.name, d.department_name
+      FROM Student AS s
+      JOIN Department AS d ON d.dept_id = s.dept_id
+      ORDER BY s.name;
+    `,
+    success: 'Correct — each student is matched to the right department.',
+  },
+  'department-averages': {
+    expectedSql: `
+      SELECT d.department_name, ROUND(AVG(s.marks), 1) AS average_marks
+      FROM Department AS d
+      JOIN Student AS s ON s.dept_id = d.dept_id
+      GROUP BY d.department_name
+      ORDER BY average_marks DESC;
+    `,
+    success: 'Correct — the department averages and ranking are accurate.',
+  },
+  'above-average-students': {
+    expectedSql: `
+      SELECT name, marks
+      FROM Student
+      WHERE marks > (SELECT AVG(marks) FROM Student)
+      ORDER BY marks DESC;
+    `,
+    success:
+      'Correct — the scalar subquery identifies every above-average student.',
+  },
 };
 
 const sqlPromise = initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
