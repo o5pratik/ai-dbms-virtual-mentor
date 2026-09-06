@@ -54,5 +54,25 @@ class ProgressRequest(BaseModel):
     completed: bool
 
 
+class ChallengeProgressEntry(BaseModel):
+    challenge_id: str = Field(min_length=1, max_length=80)
+    attempts: int = Field(ge=0)
+    failed_attempts: int = Field(ge=0)
+    passed: bool
+    passed_at: int | None = Field(default=None, gt=0)
+
+    @field_validator("failed_attempts")
+    @classmethod
+    def failures_must_not_exceed_attempts(cls, value: int, info) -> int:
+        attempts = info.data.get("attempts")
+        if isinstance(attempts, int) and value > attempts:
+            raise ValueError("failed_attempts cannot exceed attempts")
+        return value
+
+
+class ChallengeProgressSyncRequest(BaseModel):
+    entries: list[ChallengeProgressEntry] = Field(max_length=100)
+
+
 class SchemaAnalyzeRequest(BaseModel):
     sql: str = Field(min_length=1, max_length=50_000)
