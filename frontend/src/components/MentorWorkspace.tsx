@@ -74,10 +74,10 @@ export function MentorWorkspace() {
   useEffect(() => {
     const productivityView = ['dashboard', 'history', 'saved', 'analytics', 'topics'].includes(activeView);
     if (!productivityView || productivityLoaded) return;
-    void refreshProductivity(true);
+    queueMicrotask(() => void refreshProductivity(true));
   }, [activeView, productivityLoaded, refreshProductivity]);
 
-  const runQuery = useCallback(async () => {
+  const runQuery = async () => {
     if (!query.trim() || running) return;
     setRunning(true);
     setError(null);
@@ -91,7 +91,7 @@ export function MentorWorkspace() {
       setRunning(false);
       void refreshProductivity();
     }
-  }, [query, running, refreshProductivity]);
+  };
 
   const clearEditor = () => {
     setQuery('');
@@ -329,7 +329,7 @@ export function MentorWorkspace() {
           <ResultsPanel result={result} error={error} running={running} analysis={analysis} analysisLoading={analysisLoading} analysisError={analysisError} queryPlan={queryPlan} queryPlanError={queryPlanError} activeTab={resultTab} onTabChange={setResultTab} onAnalyze={analyzeCurrentQuery} onFix={fixCurrentQuery} onExportCsv={() => exportResult('csv')} onExportJson={() => exportResult('json')} />
         </div>
         </> : <WriteLab />}
-      </section> : activeView === 'write-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><WriteLab /></section> : activeView === 'schema-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><SchemaLab analysis={customSchema} loading={customSchemaLoading} error={customSchemaError} selectedTable={selectedTable} onSelectTable={setSelectedTable} onAnalyze={analyzeCustomSchema} /></section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={navigateTo} onRunQuery={openInPlayground} onExplainQuery={explainLessonQuery} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
+      </section> : activeView === 'write-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><WriteLab /></section> : activeView === 'schema-lab' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><SchemaLab analysis={customSchema} loading={customSchemaLoading} error={customSchemaError} selectedTable={selectedTable} onSelectTable={setSelectedTable} onAnalyze={analyzeCustomSchema} /></section> : schemaView ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">{schema ? (activeView === 'schema' ? <SchemaExplorer schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} onOpenQuery={openInPlayground} /> : <ErDiagram schema={schema} selectedTable={selectedTable} onSelectTable={setSelectedTable} />) : <SchemaLoading error={schemaError} />}</section> : <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]"><ProductivityWorkspace activeView={activeView} history={history} saved={saved} completedTopics={completedTopics} loading={productivityLoading} onNavigate={navigateTo} onRunQuery={openInPlayground} onExplainQuery={explainLessonQuery} onSaveQuery={saveSql} onDeleteSaved={removeSaved} onClearHistory={removeHistory} onToggleTopic={toggleTopic} /></section>}
 
       {activeView === 'playground' ? (playgroundMode === 'edit' ? <WriteLabContextPanel /> : <MentorPanel
         view={mentorView}

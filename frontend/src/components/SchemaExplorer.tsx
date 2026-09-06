@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, KeyRound, Link2, Rows3, Table2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, KeyRound, Link2, Play, Rows3, Table2 } from 'lucide-react';
 
 import type { SchemaResponse } from '../services/api';
 
@@ -6,6 +6,7 @@ type SchemaExplorerProps = {
   schema: SchemaResponse;
   selectedTable: string;
   onSelectTable: (table: string) => void;
+  onOpenQuery: (query: string) => void;
 };
 
 function KeyBadge({ children, tone = 'blue' }: { children: React.ReactNode; tone?: 'blue' | 'violet' | 'green' }) {
@@ -17,7 +18,7 @@ function KeyBadge({ children, tone = 'blue' }: { children: React.ReactNode; tone
   return <span className={`rounded border px-1.5 py-0.5 font-mono text-[8px] font-bold ${colors[tone]}`}>{children}</span>;
 }
 
-export function SchemaExplorer({ schema, selectedTable, onSelectTable }: SchemaExplorerProps) {
+export function SchemaExplorer({ schema, selectedTable, onSelectTable, onOpenQuery }: SchemaExplorerProps) {
   const table = schema.tables.find((item) => item.name === selectedTable) ?? schema.tables[0];
   const relationships = schema.relationships.filter((item) => item.from_table === table.name || item.to_table === table.name);
 
@@ -65,7 +66,10 @@ export function SchemaExplorer({ schema, selectedTable, onSelectTable }: SchemaE
                 <div className="flex items-center gap-2"><h2 className="text-base font-bold">{table.name}</h2><span className="rounded-full border border-[var(--border-bright)] px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-[var(--muted-bright)]">{table.kind}</span></div>
                 <p className="mt-1 text-xs text-[var(--muted)]">{table.description}</p>
               </div>
-              <div className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-[10px] text-[var(--muted)]"><Rows3 size={13} /> {table.row_count} sample rows</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-[10px] text-[var(--muted)]"><Rows3 size={13} /> {table.row_count} sample rows</div>
+                <button type="button" onClick={() => onOpenQuery(`SELECT *\nFROM "${table.name.replace(/"/g, '""')}"\nLIMIT 100;`)} className="flex items-center gap-1.5 rounded-lg bg-[var(--blue)] px-3 py-2 text-[10px] font-semibold text-white hover:bg-[var(--blue-bright)]"><Play size={12} fill="currentColor" /> Query table</button>
+              </div>
             </div>
 
             <div className="mt-5 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
