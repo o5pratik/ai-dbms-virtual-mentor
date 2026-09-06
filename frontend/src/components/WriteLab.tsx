@@ -283,6 +283,10 @@ function displayValue(value: SqlValue) {
   return String(value);
 }
 
+function quoteSqlIdentifier(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
 export function WriteLab() {
   const [sql, setSql] = useState(STARTER_SCRIPT);
   const [results, setResults] = useState<ResultSet[]>([]);
@@ -682,6 +686,28 @@ export function WriteLab() {
       ?.name ??
     diagram?.tables[0]?.name ??
     '';
+  const activeDiagramTableData = diagram?.tables.find(
+    (table) => table.name === activeDiagramTable,
+  );
+
+  const loadDiagramQuery = () => {
+    if (!activeDiagramTableData) return;
+    const nextSql = `SELECT *
+FROM ${quoteSqlIdentifier(activeDiagramTableData.name)}
+LIMIT 100;`;
+    setSql(nextSql);
+    setActiveChallenge(null);
+    setGradeResult(null);
+    setSolutionVisible(false);
+    setResults([]);
+    setError('');
+    setFix(null);
+    setFixError('');
+    setMessage(
+      `A safe SELECT for ${activeDiagramTableData.name} is ready. Choose Run script to view its rows.`,
+    );
+    setActiveTab('output');
+  };
 
   const applyChallengeSolution = () => {
     if (!activeChallengeDefinition) return;
@@ -1304,12 +1330,76 @@ export function WriteLab() {
             ) : null}
             {activeTab === 'er' ? (
               diagram?.tables.length ? (
-                <ErDiagram
-                  schema={{ ...diagram, database: databaseName }}
-                  selectedTable={activeDiagramTable}
-                  onSelectTable={setSelectedDiagramTable}
-                  embedded
-                />
+                <div className="space-y-3">
+                  {activeDiagramTableData ? (
+                    <section className="flex flex-col gap-3 rounded-xl border border-[color:rgb(109_141_255_/_28%)] bg-[color:rgb(109_141_255_/_6%)] p-4 md:flex-row md:items-center">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Table2
+                            size={17}
+                            className="text-[var(--blue-bright)]"
+                          />
+                          <h2 className="font-semibold text-[var(--text)]">
+                            {activeDiagramTableData.name}
+                          </h2>
+                          <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] uppercase tracking-wide text-[var(--muted)]">
+                            {activeDiagramTableData.kind}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs text-[var(--muted-bright)]">
+                          {activeDiagramTableData.row_count} row(s) ·{' '}
+                          {activeDiagramTableData.columns.length} column(s) ·{' '}
+                          {
+                            activeDiagramTableData.columns.filter(
+                              (column) => column.primary_key,
+                            ).length
+                          }{' '}
+                          primary key column(s) ·{' '}
+                          {
+                            activeDiagramTableData.columns.filter(
+                              (column) => column.foreign_key,
+                            ).length
+                          }{' '}
+                          foreign key column(s)
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {activeDiagramTableData.columns.map((column) => (
+                            <span
+                              key={column.name}
+                              title={
+                                column.foreign_key
+                                  ? `References ${column.foreign_key.table}.${column.foreign_key.column}`
+                                  : undefined
+                              }
+                              className={`rounded-md border px-2 py-1 font-mono text-[11px] ${column.primary_key ? 'border-[color:rgb(246_199_111_/_35%)] text-[#f6c76f]' : column.foreign_key ? 'border-[color:rgb(155_124_255_/_35%)] text-[#bba8ff]' : 'border-[var(--border)] text-[var(--muted-bright)]'}`}
+                            >
+                              {column.primary_key
+                                ? 'PK '
+                                : column.foreign_key
+                                  ? 'FK '
+                                  : ''}
+                              {column.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={loadDiagramQuery}
+                        className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--blue)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--blue-bright)]"
+                      >
+                        <Play size={15} />
+                        Query table
+                      </button>
+                    </section>
+                  ) : null}
+                  <ErDiagram
+                    schema={{ ...diagram, database: databaseName }}
+                    selectedTable={activeDiagramTable}
+                    onSelectTable={setSelectedDiagramTable}
+                    embedded
+                  />
+                </div>
               ) : (
                 <div className="flex min-h-56 items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-center">
                   <div>
@@ -1574,7 +1664,7 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Editable Playground</p>
-          <p className="text-xs text-[var(--green)]">Phase 21 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 22 · ready</p>
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">
@@ -1793,7 +1883,7 @@ export function WriteLabContextPanel() {
         </p>
         <p className="flex items-center gap-2">
           <Table2 size={15} className="text-[var(--violet)]" />
-          ER diagram follows every schema change
+          ER diagram follows changes and opens table queries
         </p>
         <p className="flex items-center gap-2">
           <Undo2 size={15} className="text-[var(--blue-bright)]" />
