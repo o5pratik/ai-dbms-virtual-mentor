@@ -186,6 +186,147 @@ function readSchema(database) {
   }));
 }
 
+function quoteIdentifier(value) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function readValues(database, sql) {
+  return database.exec(sql)[0]?.values ?? [];
+}
+
+function readDiagram(database) {
+  const tableNames = readValues(
+    database,
+    `SELECT name
+     FROM sqlite_schema
+     WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+     ORDER BY name;`,
+  ).map((row) => String(row[0]));
+
+  const tableDetails = tableNames.map((name) => {
+    const quotedName = quoteIdentifier(name);
+    const columnRows = readValues(
+      database,
+      `PRAGMA table_info(${quotedName});`,
+    );
+    const foreignKeyRows = readValues(
+      database,
+      `PRAGMA foreign_key_list(${quotedName});`,
+    );
+    const singleColumnUniqueKeys = new Set();
+
+    for (const indexRow of readValues(
+      database,
+      `PRAGMA index_list(${quotedName});`,
+    )) {
+      if (!Number(indexRow[2])) continue;
+      const indexColumns = readValues(
+        database,
+        `PRAGMA index_info(${quoteIdentifier(String(indexRow[1]))});`,
+      );
+      if (indexColumns.length === 1) {
+        singleColumnUniqueKeys.add(String(indexColumns[0][2]));
+      }
+    }
+
+    let rowCount = 0;
+    try {
+      rowCount = Number(
+        readValues(database, `SELECT COUNT(*) FROM ${quotedName};`)[0]?.[0] ??
+          0,
+      );
+    } catch {
+      // Some imported virtual tables cannot be counted without extensions.
+    }
+
+    return {
+      name,
+      rowCount,
+      columnRows,
+      foreignKeyRows,
+      singleColumnUniqueKeys,
+    };
+  });
+
+  const primaryKeyByTable = new Map(
+    tableDetails.map((table) => [
+      table.name,
+      table.columnRows
+        .filter((row) => Number(row[5]) > 0)
+        .sort((a, b) => Number(a[5]) - Number(b[5]))
+        .map((row) => String(row[1])),
+    ]),
+  );
+
+  const relationships = [];
+  const tables = tableDetails.map((table) => {
+    const foreignKeysByColumn = new Map();
+    for (const row of table.foreignKeyRows) {
+      const targetTable = String(row[2]);
+      const fromColumn = String(row[3]);
+      const targetColumn = row[4]
+        ? String(row[4])
+        : (primaryKeyByTable.get(targetTable)?.[0] ?? 'rowid');
+      foreignKeysByColumn.set(fromColumn, {
+        table: targetTable,
+        column: targetColumn,
+      });
+      relationships.push({
+        id: `${table.name}.${fromColumn}-${targetTable}.${targetColumn}-${row[0]}-${row[1]}`,
+        from_table: table.name,
+        from_column: fromColumn,
+        to_table: targetTable,
+        to_column: targetColumn,
+        cardinality: 'many-to-one',
+      });
+    }
+
+    const primaryKeys = primaryKeyByTable.get(table.name) ?? [];
+    const kind =
+      foreignKeysByColumn.size >= 2 && primaryKeys.length >= 2
+        ? 'junction'
+        : 'entity';
+    return {
+      name: table.name,
+      kind,
+      description:
+        kind === 'junction'
+          ? `Links ${foreignKeysByColumn.size} related tables.`
+          : `${table.rowCount} row${table.rowCount === 1 ? '' : 's'} in the editable database.`,
+      row_count: table.rowCount,
+      columns: table.columnRows.map((row) => {
+        const columnName = String(row[1]);
+        const primaryKey = Number(row[5]) > 0;
+        return {
+          name: columnName,
+          type: String(row[2] || 'ANY').toUpperCase(),
+          nullable: !primaryKey && !Number(row[3]),
+          primary_key: primaryKey,
+          unique: table.singleColumnUniqueKeys.has(columnName),
+          foreign_key: foreignKeysByColumn.get(columnName),
+        };
+      }),
+    };
+  });
+
+  return {
+    database: 'EditableDB',
+    engine: 'SQLite (browser)',
+    tables,
+    relationships,
+    totals: {
+      tables: tables.length,
+      columns: tables.reduce((total, table) => total + table.columns.length, 0),
+      primary_keys: tables.reduce(
+        (total, table) =>
+          total + table.columns.filter((column) => column.primary_key).length,
+        0,
+      ),
+      foreign_keys: relationships.length,
+    },
+  };
+}
+
 function serialiseResults(results) {
   return results.map((result) => ({
     columns: result.columns,
@@ -285,6 +426,7 @@ self.onmessage = async (event) => {
         id,
         ok: true,
         schema: readSchema(database),
+        diagram: readDiagram(database),
         elapsedMs: performance.now() - startedAt,
       });
       return;
@@ -296,6 +438,7 @@ self.onmessage = async (event) => {
         id,
         ok: true,
         schema: readSchema(database),
+        diagram: readDiagram(database),
         elapsedMs: performance.now() - startedAt,
       });
       return;
@@ -318,6 +461,7 @@ self.onmessage = async (event) => {
         id,
         ok: true,
         schema: readSchema(database),
+        diagram: readDiagram(database),
         elapsedMs: performance.now() - startedAt,
       });
       return;
@@ -346,6 +490,7 @@ self.onmessage = async (event) => {
       results: serialiseResults(results),
       changes: database.getRowsModified(),
       schema: readSchema(database),
+      diagram: readDiagram(database),
       elapsedMs: performance.now() - startedAt,
     });
   } catch (caught) {

@@ -39,6 +39,7 @@ import {
   syncChallengeProgressCloud,
   type ChallengeProgressItem,
   type FixResponse,
+  type SchemaResponse,
 } from '../services/api';
 import {
   challengeProgressEntries,
@@ -58,6 +59,7 @@ import {
   savePracticeCheckpoint,
   savePracticeSnapshot,
 } from '../services/practice-storage';
+import { ErDiagram } from './ErDiagram';
 
 type SqlValue = number | string | Uint8Array | null;
 type ResultSet = {
@@ -73,6 +75,7 @@ type LabResponse = {
   results?: ResultSet[];
   changes?: number;
   schema?: SchemaObject[];
+  diagram?: SchemaResponse;
   bytes?: ArrayBuffer;
   elapsedMs?: number;
   passed?: boolean;
@@ -284,13 +287,15 @@ export function WriteLab() {
   const [sql, setSql] = useState(STARTER_SCRIPT);
   const [results, setResults] = useState<ResultSet[]>([]);
   const [schema, setSchema] = useState<SchemaObject[]>([]);
+  const [diagram, setDiagram] = useState<SchemaResponse | null>(null);
+  const [selectedDiagramTable, setSelectedDiagramTable] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState(
     'Loading the isolated SQLite database…',
   );
-  const [activeTab, setActiveTab] = useState<'output' | 'schema' | 'messages'>(
-    'output',
-  );
+  const [activeTab, setActiveTab] = useState<
+    'output' | 'schema' | 'er' | 'messages'
+  >('output');
   const [ready, setReady] = useState(false);
   const [running, setRunning] = useState(false);
   const [databaseName, setDatabaseName] = useState('EditableDB');
@@ -457,6 +462,7 @@ export function WriteLab() {
               databaseName: snapshot.databaseName,
             };
             setSchema(response.schema ?? []);
+            setDiagram(response.diagram ?? null);
             setLastSavedAt(snapshot.savedAt);
             setSaveState(
               draft && draft.savedAt > snapshot.savedAt ? 'draft' : 'saved',
@@ -476,6 +482,7 @@ export function WriteLab() {
           if (!response.ok) throw new Error(response.error);
           if (cancelled) return;
           setSchema(response.schema ?? []);
+          setDiagram(response.diagram ?? null);
           setMessage(
             'EditableDB is ready with a safe copy of CollegeDB. Local recovery is enabled.',
           );
@@ -586,6 +593,7 @@ export function WriteLab() {
       if (!response.ok) throw new Error(response.error);
       setResults(response.results ?? []);
       setSchema(response.schema ?? []);
+      setDiagram(response.diagram ?? null);
       const resultCount = response.results?.length ?? 0;
       setMessage(
         `${resultCount ? `${resultCount} result set${resultCount === 1 ? '' : 's'}` : 'Script completed'} · last statement changed ${response.changes ?? 0} row(s) · ${(response.elapsedMs ?? 0).toFixed(1)} ms`,
@@ -669,6 +677,11 @@ export function WriteLab() {
   const activeChallengeDefinition = CHALLENGES.find(
     (challenge) => challenge.id === activeChallenge,
   );
+  const activeDiagramTable =
+    diagram?.tables.find((table) => table.name === selectedDiagramTable)
+      ?.name ??
+    diagram?.tables[0]?.name ??
+    '';
 
   const applyChallengeSolution = () => {
     if (!activeChallengeDefinition) return;
@@ -773,6 +786,7 @@ export function WriteLab() {
       setSql(checkpoint.sql);
       setDatabaseName(checkpoint.databaseName);
       setSchema(response.schema ?? []);
+      setDiagram(response.diagram ?? null);
       setResults([]);
       await persistDatabase(checkpoint.sql, checkpoint.databaseName);
       await clearPracticeCheckpoint();
@@ -810,6 +824,7 @@ export function WriteLab() {
       const response = await request('reset', {}, 15000);
       if (!response.ok) throw new Error(response.error);
       setSchema(response.schema ?? []);
+      setDiagram(response.diagram ?? null);
       setResults([]);
       setDatabaseName('EditableDB');
       setSql(STARTER_SCRIPT);
@@ -848,6 +863,7 @@ export function WriteLab() {
       const response = await request('import', { bytes }, 15000);
       if (!response.ok) throw new Error(response.error);
       setSchema(response.schema ?? []);
+      setDiagram(response.diagram ?? null);
       setResults([]);
       setDatabaseName(file.name);
       await persistDatabase(sql, file.name);
@@ -1065,7 +1081,7 @@ export function WriteLab() {
             role="tablist"
             aria-label="Editable Playground output"
           >
-            {(['output', 'schema', 'messages'] as const).map((tab) => (
+            {(['output', 'schema', 'er', 'messages'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -1074,8 +1090,9 @@ export function WriteLab() {
                 onClick={() => setActiveTab(tab)}
                 className={`h-full border-b-2 px-0.5 text-sm font-semibold capitalize ${activeTab === tab ? 'border-[var(--blue)] text-[var(--text)]' : 'border-transparent text-[var(--muted)]'}`}
               >
-                {tab}
+                {tab === 'er' ? 'ER diagram' : tab}
                 {tab === 'schema' ? ` (${schema.length})` : ''}
+                {tab === 'er' ? ` (${diagram?.tables.length ?? 0})` : ''}
               </button>
             ))}
           </div>
@@ -1284,6 +1301,31 @@ export function WriteLab() {
                   </article>
                 ))}
               </div>
+            ) : null}
+            {activeTab === 'er' ? (
+              diagram?.tables.length ? (
+                <ErDiagram
+                  schema={{ ...diagram, database: databaseName }}
+                  selectedTable={activeDiagramTable}
+                  onSelectTable={setSelectedDiagramTable}
+                  embedded
+                />
+              ) : (
+                <div className="flex min-h-56 items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-center">
+                  <div>
+                    <Table2
+                      className="mx-auto text-[var(--violet)]"
+                      size={24}
+                    />
+                    <p className="mt-3 text-sm font-semibold">
+                      No tables to map yet
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      Run a CREATE TABLE statement, then return to this tab.
+                    </p>
+                  </div>
+                </div>
+              )
             ) : null}
             {activeTab === 'messages' ? (
               <div className="space-y-3">
@@ -1532,7 +1574,7 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Editable Playground</p>
-          <p className="text-xs text-[var(--green)]">Phase 20 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 21 · ready</p>
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">
@@ -1748,6 +1790,10 @@ export function WriteLabContextPanel() {
         <p className="flex items-center gap-2">
           <Box size={15} className="text-[var(--violet)]" />
           Database restores on this device
+        </p>
+        <p className="flex items-center gap-2">
+          <Table2 size={15} className="text-[var(--violet)]" />
+          ER diagram follows every schema change
         </p>
         <p className="flex items-center gap-2">
           <Undo2 size={15} className="text-[var(--blue-bright)]" />
