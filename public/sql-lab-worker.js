@@ -30,6 +30,29 @@ INSERT INTO Student (student_id, name, marks, dept_id) VALUES
   (4, 'Meera Iyer', 81, 3);
 `;
 
+const CHALLENGES = {
+  'students-above-80': {
+    expectedSql:
+      'SELECT name, marks FROM Student WHERE marks > 80 ORDER BY marks DESC;',
+    success:
+      'Correct — you filtered the qualifying students and sorted the highest mark first.',
+  },
+  'department-counts': {
+    expectedSql: `
+      SELECT d.department_name, COUNT(s.student_id) AS student_count
+      FROM Department AS d
+      LEFT JOIN Student AS s ON s.dept_id = d.dept_id
+      GROUP BY d.department_name
+      ORDER BY d.department_name;
+    `,
+    success: 'Correct — every department is included with its student count.',
+  },
+  'top-student': {
+    expectedSql: 'SELECT name, marks FROM Student ORDER BY marks DESC LIMIT 1;',
+    success: 'Correct — the query returns only the highest-scoring student.',
+  },
+};
+
 const sqlPromise = initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
 let databasePromise = null;
 
@@ -54,10 +77,13 @@ async function resetDatabase() {
 }
 
 async function importDatabase(bytes) {
-  if (!bytes || bytes.byteLength < 100) throw new Error('Choose a valid, non-empty SQLite database file.');
-  if (bytes.byteLength > 20 * 1024 * 1024) throw new Error('SQLite files are limited to 20 MB in Write Lab.');
+  if (!bytes || bytes.byteLength < 100)
+    throw new Error('Choose a valid, non-empty SQLite database file.');
+  if (bytes.byteLength > 20 * 1024 * 1024)
+    throw new Error('SQLite files are limited to 20 MB in Write Lab.');
   const header = new TextDecoder().decode(new Uint8Array(bytes, 0, 16));
-  if (header !== 'SQLite format 3\0') throw new Error('This is not a valid SQLite 3 database file.');
+  if (header !== 'SQLite format 3\0')
+    throw new Error('This is not a valid SQLite 3 database file.');
 
   const imported = await createDatabase(bytes);
   imported.exec('SELECT COUNT(*) FROM sqlite_schema;');
@@ -91,35 +117,150 @@ function serialiseResults(results) {
   }));
 }
 
+function stripLeadingComments(sql) {
+  return sql
+    .replace(/^\s*(?:--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/\s*)*/u, '')
+    .trim();
+}
+
+function validateChallengeSql(sql) {
+  const cleaned = stripLeadingComments(sql);
+  if (!cleaned)
+    throw new Error('Write a SELECT query before checking your answer.');
+  const withoutTrailingSemicolon = cleaned.replace(/;\s*$/u, '');
+  if (withoutTrailingSemicolon.includes(';')) {
+    throw new Error('Check one SELECT statement at a time.');
+  }
+  if (!/^(SELECT|WITH)\b/iu.test(withoutTrailingSemicolon)) {
+    throw new Error('Challenges accept one read-only SELECT or WITH query.');
+  }
+  return withoutTrailingSemicolon;
+}
+
+function comparableResults(result) {
+  if (!result) return { columns: [], values: [] };
+  return {
+    columns: result.columns.map((column) =>
+      String(column).trim().toLowerCase(),
+    ),
+    values: result.values.map((row) =>
+      row.map((value) =>
+        value instanceof Uint8Array ? Array.from(value) : value,
+      ),
+    ),
+  };
+}
+
+function gradeFeedback(actual, expected) {
+  if (actual.columns.length !== expected.columns.length) {
+    return `Your query returned ${actual.columns.length} column(s); the challenge expects ${expected.columns.length}. Check the requested column names.`;
+  }
+  if (
+    actual.columns.some((column, index) => column !== expected.columns[index])
+  ) {
+    return `Your columns do not match yet. Return them as: ${expected.columns.join(', ')}.`;
+  }
+  if (actual.values.length !== expected.values.length) {
+    return `Your query returned ${actual.values.length} row(s); the expected result has ${expected.values.length}. Recheck the filter, grouping, or LIMIT.`;
+  }
+  return 'The columns are right, but one or more values or their order differ. Review the challenge hint and ORDER BY clause.';
+}
+
+async function gradeChallenge(sql, challengeId) {
+  const challenge = CHALLENGES[challengeId];
+  if (!challenge) throw new Error('Choose a valid SQL challenge first.');
+  const safeSql = validateChallengeSql(sql);
+  const database = await createDatabase();
+  try {
+    database.run('PRAGMA query_only = ON;');
+    let actualRaw;
+    try {
+      actualRaw = database.exec(safeSql);
+    } catch (caught) {
+      return {
+        passed: false,
+        feedback: `SQLite could not run this answer: ${caught instanceof Error ? caught.message : 'syntax error'}`,
+        results: [],
+      };
+    }
+    const expectedRaw = database.exec(challenge.expectedSql);
+    const actual = comparableResults(actualRaw[0]);
+    const expected = comparableResults(expectedRaw[0]);
+    const passed = JSON.stringify(actual) === JSON.stringify(expected);
+    return {
+      passed,
+      feedback: passed ? challenge.success : gradeFeedback(actual, expected),
+      results: serialiseResults(actualRaw),
+    };
+  } finally {
+    database.close();
+  }
+}
+
 self.onmessage = async (event) => {
-  const { id, type, sql, bytes } = event.data;
+  const { id, type, sql, bytes, challengeId } = event.data;
   const startedAt = performance.now();
   try {
     if (type === 'reset') {
       const database = await resetDatabase();
-      self.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
+      self.postMessage({
+        id,
+        ok: true,
+        schema: readSchema(database),
+        elapsedMs: performance.now() - startedAt,
+      });
       return;
     }
 
     if (type === 'import') {
       const database = await importDatabase(bytes);
-      self.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
+      self.postMessage({
+        id,
+        ok: true,
+        schema: readSchema(database),
+        elapsedMs: performance.now() - startedAt,
+      });
+      return;
+    }
+
+    if (type === 'grade') {
+      const grade = await gradeChallenge(sql, challengeId);
+      self.postMessage({
+        id,
+        ok: true,
+        ...grade,
+        elapsedMs: performance.now() - startedAt,
+      });
       return;
     }
 
     const database = await getDatabase();
     if (type === 'schema') {
-      self.postMessage({ id, ok: true, schema: readSchema(database), elapsedMs: performance.now() - startedAt });
+      self.postMessage({
+        id,
+        ok: true,
+        schema: readSchema(database),
+        elapsedMs: performance.now() - startedAt,
+      });
       return;
     }
 
     if (type === 'export') {
       const exported = database.export();
-      self.postMessage({ id, ok: true, bytes: exported.buffer, elapsedMs: performance.now() - startedAt }, [exported.buffer]);
+      self.postMessage(
+        {
+          id,
+          ok: true,
+          bytes: exported.buffer,
+          elapsedMs: performance.now() - startedAt,
+        },
+        [exported.buffer],
+      );
       return;
     }
 
-    if (!sql || !sql.trim()) throw new Error('Enter one or more SQL statements to run.');
+    if (!sql || !sql.trim())
+      throw new Error('Enter one or more SQL statements to run.');
     const results = database.exec(sql);
     self.postMessage({
       id,
@@ -133,7 +274,10 @@ self.onmessage = async (event) => {
     self.postMessage({
       id,
       ok: false,
-      error: caught instanceof Error ? caught.message : 'SQLite could not execute this script.',
+      error:
+        caught instanceof Error
+          ? caught.message
+          : 'SQLite could not execute this script.',
       elapsedMs: performance.now() - startedAt,
     });
   }

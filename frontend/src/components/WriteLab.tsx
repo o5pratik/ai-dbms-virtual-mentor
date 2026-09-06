@@ -3,6 +3,7 @@
 import Editor from '@monaco-editor/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Award,
   AlertTriangle,
   Box,
   Check,
@@ -52,9 +53,17 @@ type LabResponse = {
   schema?: SchemaObject[];
   bytes?: ArrayBuffer;
   elapsedMs?: number;
+  passed?: boolean;
+  feedback?: string;
   error?: string;
 };
-type RequestType = 'execute' | 'reset' | 'schema' | 'export' | 'import';
+type RequestType =
+  | 'execute'
+  | 'reset'
+  | 'schema'
+  | 'export'
+  | 'import'
+  | 'grade';
 type PendingRequest = {
   resolve: (response: LabResponse) => void;
   reject: (error: Error) => void;
@@ -96,6 +105,45 @@ const EXAMPLES = [
   },
 ];
 
+const CHALLENGES = [
+  {
+    id: 'students-above-80',
+    title: 'Students above 80',
+    difficulty: 'Beginner',
+    prompt: 'Return name and marks for students above 80, highest mark first.',
+    hint: 'Use WHERE marks > 80 and ORDER BY marks DESC.',
+    sql: `-- Return students with marks above 80, highest first.
+SELECT name, marks
+FROM Student
+WHERE marks > 0
+ORDER BY marks DESC;`,
+  },
+  {
+    id: 'department-counts',
+    title: 'Count by department',
+    difficulty: 'Intermediate',
+    prompt:
+      'Return every department name and its student_count, alphabetically.',
+    hint: 'Use LEFT JOIN, COUNT(student_id), GROUP BY, and an alias.',
+    sql: `-- Return department_name and student_count for every department.
+SELECT d.department_name, s.student_id
+FROM Department AS d
+LEFT JOIN Student AS s ON s.dept_id = d.dept_id
+ORDER BY d.department_name;`,
+  },
+  {
+    id: 'top-student',
+    title: 'Top student',
+    difficulty: 'Beginner',
+    prompt: 'Return only the name and marks of the highest-scoring student.',
+    hint: 'Sort marks descending, then limit the result to one row.',
+    sql: `-- Return only the highest-scoring student.
+SELECT name, marks
+FROM Student
+ORDER BY marks DESC;`,
+  },
+];
+
 function displayValue(value: SqlValue) {
   if (value === null)
     return <span className="italic text-[var(--muted)]">NULL</span>;
@@ -127,6 +175,12 @@ export function WriteLab() {
   const [undoAvailable, setUndoAvailable] = useState(false);
   const [undoLabel, setUndoLabel] = useState('');
   const [undoing, setUndoing] = useState(false);
+  const [activeChallenge, setActiveChallenge] = useState<string | null>(null);
+  const [grading, setGrading] = useState(false);
+  const [gradeResult, setGradeResult] = useState<{
+    passed: boolean;
+    feedback: string;
+  } | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const selectionReaderRef = useRef<(() => string) | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -164,7 +218,11 @@ export function WriteLab() {
   const request = useCallback(
     (
       type: RequestType,
-      payload: { sql?: string; bytes?: ArrayBuffer } = {},
+      payload: {
+        sql?: string;
+        bytes?: ArrayBuffer;
+        challengeId?: string;
+      } = {},
       timeoutMs = 5000,
     ) =>
       new Promise<LabResponse>((resolve, reject) => {
@@ -337,6 +395,8 @@ export function WriteLab() {
       const nextSql = (event as CustomEvent<string>).detail;
       if (nextSql) {
         setSql(nextSql);
+        setActiveChallenge(null);
+        setGradeResult(null);
         setError('');
         setFix(null);
         setFixError('');
@@ -347,12 +407,36 @@ export function WriteLab() {
     return () => window.removeEventListener('write-lab-example', useExample);
   }, []);
 
+  useEffect(() => {
+    const useChallenge = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ id?: string; sql?: string; title?: string }>
+      ).detail;
+      if (!detail?.id || !detail.sql) return;
+      setSql(detail.sql);
+      setActiveChallenge(detail.id);
+      setGradeResult(null);
+      setError('');
+      setFix(null);
+      setFixError('');
+      setResults([]);
+      setMessage(
+        `${detail.title ?? 'Challenge'} loaded. Edit the query, then choose Check answer.`,
+      );
+      setActiveTab('output');
+    };
+    window.addEventListener('write-lab-challenge', useChallenge);
+    return () =>
+      window.removeEventListener('write-lab-challenge', useChallenge);
+  }, []);
+
   const run = async (script = sql) => {
     if (!script.trim() || running) return;
     setRunning(true);
     setError('');
     setFix(null);
     setFixError('');
+    setGradeResult(null);
     setLastExecutedSql(script);
     setActiveTab('output');
     try {
@@ -384,6 +468,40 @@ export function WriteLab() {
       await persistDatabase(sql, databaseName);
     } finally {
       setRunning(false);
+    }
+  };
+
+  const gradeAnswer = async () => {
+    if (!activeChallenge || !sql.trim() || grading || running) return;
+    setGrading(true);
+    setError('');
+    setFix(null);
+    setFixError('');
+    setGradeResult(null);
+    setActiveTab('output');
+    try {
+      const response = await request(
+        'grade',
+        { sql, challengeId: activeChallenge },
+        15000,
+      );
+      if (!response.ok) throw new Error(response.error);
+      const passed = Boolean(response.passed);
+      const feedback = response.feedback ?? 'Your answer was checked.';
+      setResults(response.results ?? []);
+      setGradeResult({ passed, feedback });
+      setMessage(
+        `${passed ? 'Challenge passed' : 'Keep trying'} · ${(response.elapsedMs ?? 0).toFixed(1)} ms · PracticeDB was not changed.`,
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'The challenge answer could not be checked.',
+      );
+      setActiveTab('messages');
+    } finally {
+      setGrading(false);
     }
   };
   useEffect(() => {
@@ -447,6 +565,7 @@ export function WriteLab() {
 
   const editSql = (value: string) => {
     setSql(value);
+    setGradeResult(null);
     if (error || fix || fixError) {
       setError('');
       setFix(null);
@@ -637,6 +756,18 @@ export function WriteLab() {
             <CodeXml size={14} />
             Run selection
           </button>
+          {activeChallenge ? (
+            <button
+              type="button"
+              onClick={() => void gradeAnswer()}
+              disabled={!ready || running || grading || !sql.trim()}
+              title="Grade this query against a fresh starter database"
+              className="flex items-center gap-1.5 rounded-lg border border-[color:rgb(246_199_111_/_30%)] bg-[color:rgb(246_199_111_/_7%)] px-2.5 py-2 text-sm font-semibold text-[#f6c76f] hover:bg-[color:rgb(246_199_111_/_12%)] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Award size={14} />
+              {grading ? 'Checking…' : 'Check answer'}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -771,72 +902,103 @@ export function WriteLab() {
           </div>
           <div className="result-scroll min-h-0 flex-1 overflow-auto p-4">
             {activeTab === 'output' ? (
-              results.length ? (
-                <div className="space-y-4">
-                  {results.map((result, resultIndex) => (
-                    <section
-                      key={resultIndex}
-                      className="overflow-hidden rounded-xl border border-[var(--border)]"
-                    >
-                      <div className="flex items-center justify-between bg-[var(--surface-raised)] px-3 py-2 text-xs text-[var(--muted-bright)]">
-                        <span>Result {resultIndex + 1}</span>
-                        <span>
-                          {result.rowCount} row(s)
-                          {result.truncated ? ' · showing first 1,000' : ''}
-                        </span>
+              <div className="space-y-4">
+                {gradeResult ? (
+                  <section
+                    className={`rounded-xl border p-4 ${gradeResult.passed ? 'border-[color:rgb(72_213_151_/_35%)] bg-[color:rgb(72_213_151_/_8%)]' : 'border-[color:rgb(246_199_111_/_35%)] bg-[color:rgb(246_199_111_/_7%)]'}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {gradeResult.passed ? (
+                        <CheckCircle2
+                          size={20}
+                          className="mt-0.5 shrink-0 text-[var(--green)]"
+                        />
+                      ) : (
+                        <AlertTriangle
+                          size={20}
+                          className="mt-0.5 shrink-0 text-[#f6c76f]"
+                        />
+                      )}
+                      <div>
+                        <p className="text-sm font-bold">
+                          {gradeResult.passed
+                            ? 'Challenge passed'
+                            : 'Not quite yet'}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-[var(--muted-bright)]">
+                          {gradeResult.feedback}
+                        </p>
                       </div>
-                      <div className="overflow-auto">
-                        <table className="w-full border-collapse text-left text-sm">
-                          <thead className="sticky top-0 bg-[#101722]">
-                            <tr>
-                              {result.columns.map((column) => (
-                                <th
-                                  key={column}
-                                  className="whitespace-nowrap border-b border-r border-[var(--border)] px-3 py-2 font-semibold text-[var(--blue-bright)]"
-                                >
-                                  {column}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {result.values.map((row, rowIndex) => (
-                              <tr
-                                key={rowIndex}
-                                className="odd:bg-white/[0.015] hover:bg-[color:rgb(109_141_255_/_5%)]"
-                              >
-                                {row.map((value, columnIndex) => (
-                                  <td
-                                    key={columnIndex}
-                                    className="whitespace-nowrap border-b border-r border-[var(--border)] px-3 py-2 font-mono text-xs text-[var(--muted-bright)]"
+                    </div>
+                  </section>
+                ) : null}
+                {results.length ? (
+                  <>
+                    {results.map((result, resultIndex) => (
+                      <section
+                        key={resultIndex}
+                        className="overflow-hidden rounded-xl border border-[var(--border)]"
+                      >
+                        <div className="flex items-center justify-between bg-[var(--surface-raised)] px-3 py-2 text-xs text-[var(--muted-bright)]">
+                          <span>Result {resultIndex + 1}</span>
+                          <span>
+                            {result.rowCount} row(s)
+                            {result.truncated ? ' · showing first 1,000' : ''}
+                          </span>
+                        </div>
+                        <div className="overflow-auto">
+                          <table className="w-full border-collapse text-left text-sm">
+                            <thead className="sticky top-0 bg-[#101722]">
+                              <tr>
+                                {result.columns.map((column) => (
+                                  <th
+                                    key={column}
+                                    className="whitespace-nowrap border-b border-r border-[var(--border)] px-3 py-2 font-semibold text-[var(--blue-bright)]"
                                   >
-                                    {displayValue(value)}
-                                  </td>
+                                    {column}
+                                  </th>
                                 ))}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </section>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex h-full min-h-36 items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-center">
-                  <div>
-                    <CheckCircle2
-                      className="mx-auto text-[var(--green)]"
-                      size={24}
-                    />
-                    <p className="mt-3 text-sm font-semibold">
-                      Ready to run a script
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--muted)]">
-                      DDL and data-changing statements report completion here.
-                    </p>
+                            </thead>
+                            <tbody>
+                              {result.values.map((row, rowIndex) => (
+                                <tr
+                                  key={rowIndex}
+                                  className="odd:bg-white/[0.015] hover:bg-[color:rgb(109_141_255_/_5%)]"
+                                >
+                                  {row.map((value, columnIndex) => (
+                                    <td
+                                      key={columnIndex}
+                                      className="whitespace-nowrap border-b border-r border-[var(--border)] px-3 py-2 font-mono text-xs text-[var(--muted-bright)]"
+                                    >
+                                      {displayValue(value)}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                    ))}
+                  </>
+                ) : !gradeResult ? (
+                  <div className="flex h-full min-h-36 items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-center">
+                    <div>
+                      <CheckCircle2
+                        className="mx-auto text-[var(--green)]"
+                        size={24}
+                      />
+                      <p className="mt-3 text-sm font-semibold">
+                        Ready to run a script
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--muted)]">
+                        DDL and data-changing statements report completion here.
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )
+                ) : null}
+              </div>
             ) : null}
             {activeTab === 'schema' ? (
               <div className="grid gap-3 md:grid-cols-2">
@@ -990,7 +1152,50 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Write Lab</p>
-          <p className="text-xs text-[var(--green)]">Phase 13 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 14 · ready</p>
+        </div>
+      </div>
+      <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">
+        <div className="flex items-center gap-2">
+          <Award size={17} className="text-[#f6c76f]" />
+          <p className="text-xs font-bold uppercase tracking-wider text-[#f6c76f]">
+            SQL challenges
+          </p>
+        </div>
+        <div className="mt-3 space-y-2">
+          {CHALLENGES.map((challenge) => (
+            <button
+              key={challenge.id}
+              type="button"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent('write-lab-challenge', {
+                    detail: {
+                      id: challenge.id,
+                      sql: challenge.sql,
+                      title: challenge.title,
+                    },
+                  }),
+                )
+              }
+              className="w-full rounded-lg border border-[var(--border)] bg-[#0b1018] p-3 text-left hover:border-[color:rgb(246_199_111_/_38%)]"
+            >
+              <span className="flex items-center justify-between gap-2">
+                <strong className="text-sm text-[var(--text)]">
+                  {challenge.title}
+                </strong>
+                <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] text-[var(--muted)]">
+                  {challenge.difficulty}
+                </span>
+              </span>
+              <span className="mt-1.5 block text-xs leading-5 text-[var(--muted-bright)]">
+                {challenge.prompt}
+              </span>
+              <span className="mt-1 block text-[11px] leading-4 text-[var(--muted)]">
+                Hint: {challenge.hint}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
       <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4">
