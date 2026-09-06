@@ -49,3 +49,45 @@ def list_progress() -> list[dict]:
 def update_progress(topic_id: str, completed: bool) -> None:
     with _connect() as connection:
         connection.execute("INSERT INTO LearningProgress (topic_id, completed, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(topic_id) DO UPDATE SET completed = excluded.completed, updated_at = CURRENT_TIMESTAMP", (topic_id[:80], int(completed)))
+
+
+def list_challenge_progress() -> list[dict]:
+    with _connect() as connection:
+        return [dict(row) for row in connection.execute("SELECT challenge_id, attempts, failed_attempts, passed, passed_at, updated_at FROM ChallengeProgress ORDER BY challenge_id")]
+
+
+def sync_challenge_progress(entries: list[dict]) -> None:
+    statement = """
+        INSERT INTO ChallengeProgress
+            (challenge_id, attempts, failed_attempts, passed, passed_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(challenge_id) DO UPDATE SET
+            attempts = MAX(ChallengeProgress.attempts, excluded.attempts),
+            failed_attempts = MAX(ChallengeProgress.failed_attempts, excluded.failed_attempts),
+            passed = MAX(ChallengeProgress.passed, excluded.passed),
+            passed_at = CASE
+                WHEN ChallengeProgress.passed_at IS NULL THEN excluded.passed_at
+                WHEN excluded.passed_at IS NULL THEN ChallengeProgress.passed_at
+                ELSE MIN(ChallengeProgress.passed_at, excluded.passed_at)
+            END,
+            updated_at = CURRENT_TIMESTAMP
+    """
+    with _connect() as connection:
+        connection.executemany(
+            statement,
+            [
+                (
+                    entry["challenge_id"][:80],
+                    entry["attempts"],
+                    entry["failed_attempts"],
+                    int(entry["passed"]),
+                    entry["passed_at"],
+                )
+                for entry in entries
+            ],
+        )
+
+
+def clear_challenge_progress() -> None:
+    with _connect() as connection:
+        connection.execute("DELETE FROM ChallengeProgress")

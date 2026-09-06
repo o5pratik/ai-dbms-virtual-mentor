@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
-from ..models import DeleteSavedRequest, ProgressRequest, SaveQueryRequest
-from ..productivity_store import clear_history, delete_saved, list_history, list_progress, list_saved, save_query, update_progress
+from ..models import ChallengeProgressSyncRequest, DeleteSavedRequest, ProgressRequest, SaveQueryRequest
+from ..productivity_store import clear_challenge_progress, clear_history, delete_saved, list_challenge_progress, list_history, list_progress, list_saved, save_query, sync_challenge_progress, update_progress
 
 
 router = APIRouter(prefix="/api", tags=["Productivity"])
@@ -44,4 +44,21 @@ def progress() -> dict:
 @router.post("/progress")
 def set_progress(request: ProgressRequest) -> dict:
     update_progress(request.topic_id, request.completed)
+    return {"success": True}
+
+
+@router.get("/challenge-progress")
+def challenge_progress() -> dict:
+    return {"items": list_challenge_progress()}
+
+
+@router.put("/challenge-progress")
+def set_challenge_progress(request: ChallengeProgressSyncRequest) -> dict:
+    sync_challenge_progress([entry.model_dump() for entry in request.entries])
+    return {"success": True}
+
+
+@router.delete("/challenge-progress")
+def remove_challenge_progress() -> dict:
+    clear_challenge_progress()
     return {"success": True}

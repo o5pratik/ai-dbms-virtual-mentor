@@ -86,6 +86,14 @@ export type ProgressItem = {
   completed: number;
   updated_at: string;
 };
+export type ChallengeProgressItem = {
+  challenge_id: string;
+  attempts: number;
+  failed_attempts: number;
+  passed: number;
+  passed_at: number | null;
+  updated_at: string;
+};
 export type QueryStepType =
   | 'source'
   | 'join'
@@ -271,5 +279,35 @@ export async function setTopicProgress(topicId: string, completed: boolean) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ topic_id: topicId, completed }),
+  });
+}
+
+export async function getChallengeProgressCloud() {
+  return (
+    await jsonRequest<{ items: ChallengeProgressItem[] }>(
+      '/api/challenge-progress',
+    )
+  ).items;
+}
+
+export async function syncChallengeProgressCloud(
+  entries: Array<{
+    challenge_id: string;
+    attempts: number;
+    failed_attempts: number;
+    passed: boolean;
+    passed_at: number | null;
+  }>,
+) {
+  return jsonRequest<{ success: boolean }>('/api/challenge-progress', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entries }),
+  });
+}
+
+export async function clearChallengeProgressCloud() {
+  return jsonRequest<{ success: boolean }>('/api/challenge-progress', {
+    method: 'DELETE',
   });
 }

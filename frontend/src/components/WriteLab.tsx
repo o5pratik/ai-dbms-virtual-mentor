@@ -10,6 +10,8 @@ import {
   Check,
   CheckCircle2,
   Clipboard,
+  Cloud,
+  CloudOff,
   CodeXml,
   Download,
   Eye,
@@ -28,10 +30,19 @@ import {
   X,
 } from 'lucide-react';
 
-import { fixWriteQuery, type FixResponse } from '../services/api';
 import {
+  clearChallengeProgressCloud,
+  fixWriteQuery,
+  getChallengeProgressCloud,
+  syncChallengeProgressCloud,
+  type ChallengeProgressItem,
+  type FixResponse,
+} from '../services/api';
+import {
+  challengeProgressEntries,
   clearChallengeProgress,
   loadChallengeProgress,
+  mergeChallengeProgress,
   recordChallengeAttempt,
   type ChallengeProgress,
 } from '../services/challenge-progress';
@@ -242,6 +253,21 @@ function dispatchChallenge(challenge: (typeof CHALLENGES)[number]) {
       },
     }),
   );
+}
+
+function cloudItemsToChallengeProgress(items: ChallengeProgressItem[]) {
+  const progress: ChallengeProgress = {};
+  for (const item of items) {
+    const updatedAt = Date.parse(`${item.updated_at.replace(' ', 'T')}Z`);
+    progress[item.challenge_id] = {
+      attempts: item.attempts,
+      failedAttempts: item.failed_attempts,
+      passed: Boolean(item.passed),
+      passedAt: item.passed_at,
+      lastAttemptAt: Number.isFinite(updatedAt) ? updatedAt : 0,
+    };
+  }
+  return progress;
 }
 
 function displayValue(value: SqlValue) {
@@ -1376,20 +1402,49 @@ export function WriteLabContextPanel() {
   const [selectedChallenge, setSelectedChallenge] = useState<string | null>(
     null,
   );
+  const [syncState, setSyncState] = useState<
+    'loading' | 'syncing' | 'synced' | 'local'
+  >('loading');
 
   useEffect(() => {
-    const initialLoad = window.setTimeout(
-      () => setChallengeProgress(loadChallengeProgress()),
-      0,
-    );
+    let cancelled = false;
+    const syncToCloud = async (progress: ChallengeProgress) => {
+      if (cancelled) return;
+      setSyncState('syncing');
+      try {
+        await syncChallengeProgressCloud(challengeProgressEntries(progress));
+        if (!cancelled) setSyncState('synced');
+      } catch {
+        if (!cancelled) setSyncState('local');
+      }
+    };
+    const initialLoad = window.setTimeout(() => {
+      const local = loadChallengeProgress();
+      setChallengeProgress(local);
+      void (async () => {
+        try {
+          const cloud = cloudItemsToChallengeProgress(
+            await getChallengeProgressCloud(),
+          );
+          if (cancelled) return;
+          const merged = mergeChallengeProgress(cloud);
+          setChallengeProgress(merged);
+          await syncToCloud(merged);
+        } catch {
+          if (!cancelled) setSyncState('local');
+        }
+      })();
+    }, 0);
     const updateProgress = (event: Event) => {
-      setChallengeProgress(
+      const progress =
         (event as CustomEvent<ChallengeProgress>).detail ??
-          loadChallengeProgress(),
-      );
+        loadChallengeProgress();
+      setChallengeProgress(progress);
+      if (Object.keys(progress).length) void syncToCloud(progress);
     };
     window.addEventListener('write-lab-progress', updateProgress);
     return () => {
+      cancelled = true;
       window.clearTimeout(initialLoad);
       window.removeEventListener('write-lab-progress', updateProgress);
     };
@@ -1408,6 +1463,10 @@ export function WriteLabContextPanel() {
     const progress = clearChallengeProgress();
     setChallengeProgress(progress);
     setSelectedChallenge(null);
+    setSyncState('syncing');
+    void clearChallengeProgressCloud()
+      .then(() => setSyncState('synced'))
+      .catch(() => setSyncState('local'));
     window.dispatchEvent(
       new CustomEvent('write-lab-progress', { detail: progress }),
     );
@@ -1421,7 +1480,7 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Write Lab</p>
-          <p className="text-xs text-[var(--green)]">Phase 17 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 18 · ready</p>
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">
@@ -1442,7 +1501,7 @@ export function WriteLabContextPanel() {
             className="h-1.5 w-full accent-[var(--green)]"
           />
           <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--muted)]">
-            <span>{completionPercent}% complete on this device</span>
+            <span>{completionPercent}% complete</span>
             {Object.keys(challengeProgress).length ? (
               <button
                 type="button"
@@ -1453,6 +1512,22 @@ export function WriteLabContextPanel() {
               </button>
             ) : null}
           </div>
+          <p
+            className={`mt-2 flex items-center gap-1.5 text-[11px] ${syncState === 'local' ? 'text-[#f6c76f]' : 'text-[var(--muted)]'}`}
+          >
+            {syncState === 'local' ? (
+              <CloudOff size={12} />
+            ) : (
+              <Cloud size={12} />
+            )}
+            {syncState === 'loading'
+              ? 'Checking cloud progress…'
+              : syncState === 'syncing'
+                ? 'Syncing progress…'
+                : syncState === 'synced'
+                  ? 'Progress synced to your site'
+                  : 'Cloud unavailable · saved on this device'}
+          </p>
         </div>
         <div className="mt-3 space-y-2">
           {CHALLENGES.map((challenge) => {

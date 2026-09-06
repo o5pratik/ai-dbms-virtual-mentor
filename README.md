@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 17 adds progressive challenge hints and reviewed solution unlocks after repeated failed checks, alongside a six-step graded path, device-local completion tracking, PracticeDB checkpoints, autosave, schema-aware mentor repairs, SQLite file import, adaptive curriculum, skill analytics, execution plans, and persistent learning tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 18 adds cloud-synced challenge progress with automatic merging and a device-local fallback, alongside progressive coaching, a six-step graded path, PracticeDB checkpoints, autosave, schema-aware mentor repairs, SQLite file import, adaptive curriculum, skill analytics, execution plans, and persistent learning tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -21,7 +21,7 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Productivity:** D1-backed history, saved SQL, learning progress, practice analytics, and CSV/JSON export
 - **Write Lab:** browser-isolated SQLite for DDL, DML, multi-statement scripts, transactions, selected-statement execution, `.db`/`.sqlite` import, schema inspection, reset, timeout protection, and `.sqlite` export
 - **Challenge grader:** six guided SQL tasks evaluated against a fresh seeded database without changing the learner's active PracticeDB
-- **Challenge progress:** device-local attempt history, completion badges, progress percentage, and reset controls
+- **Challenge progress:** D1-backed attempt and completion sync with automatic device merging, offline fallback, progress percentage, and reset controls
 - **Progressive coaching:** stronger retry hints and reviewed solution reveal after three failed challenge checks
 - **Security:** server-only AI credentials, read-only SQLite connection, statement authorizer, row and execution limits
 
@@ -109,6 +109,7 @@ Only read-only learning queries are accepted. Destructive statements return a sa
 - `GET/DELETE /api/history` lists or clears the latest 100 query attempts.
 - `GET/POST/DELETE /api/saved` manages reusable read-only queries.
 - `GET/POST /api/progress` reads and updates guided-learning progress.
+- `GET/PUT/DELETE /api/challenge-progress` synchronizes or clears graded Write Lab challenge progress.
 
 Each response includes a `source` field (`groq` or `built-in`) so the interface reports which tutor answered.
 
@@ -143,3 +144,4 @@ npm run build
 14. **Completed — Phase 15:** persistent challenge attempts, completion badges, progress tracking, and reset controls.
 15. **Completed — Phase 16:** six-level challenge path covering filtering, sorting, joins, aggregation, and subqueries with guided next-step navigation.
 16. **Completed — Phase 17:** progressive retry hints, backward-compatible failure tracking, and reviewed solution reveal after three failed checks.
+17. **Completed — Phase 18:** cloud-synced challenge attempts and completions with automatic local merging and an offline device fallback.
