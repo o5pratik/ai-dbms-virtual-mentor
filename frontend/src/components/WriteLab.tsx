@@ -24,7 +24,9 @@ import {
   RotateCcw,
   ShieldCheck,
   Table2,
+  Target,
   TimerReset,
+  Trophy,
   Undo2,
   WandSparkles,
   X,
@@ -1456,6 +1458,53 @@ export function WriteLabContextPanel() {
   const completionPercent = Math.round(
     (completedChallenges / CHALLENGES.length) * 100,
   );
+  const progressEntries = CHALLENGES.flatMap((challenge) => {
+    const progress = challengeProgress[challenge.id];
+    return progress ? [progress] : [];
+  });
+  const totalAttempts = progressEntries.reduce(
+    (sum, progress) => sum + progress.attempts,
+    0,
+  );
+  const successfulChecks = progressEntries.reduce(
+    (sum, progress) =>
+      sum + Math.max(0, progress.attempts - progress.failedAttempts),
+    0,
+  );
+  const passEfficiency = totalAttempts
+    ? Math.round((successfulChecks / totalAttempts) * 100)
+    : 0;
+  const firstTryWins = progressEntries.filter(
+    (progress) => progress.passed && progress.failedAttempts === 0,
+  ).length;
+  const recommendedChallenge = CHALLENGES.map((challenge, index) => ({
+    challenge,
+    index,
+    progress: challengeProgress[challenge.id],
+  }))
+    .filter(({ progress }) => !progress?.passed)
+    .sort(
+      (left, right) =>
+        (right.progress?.failedAttempts ?? 0) -
+          (left.progress?.failedAttempts ?? 0) || left.index - right.index,
+    )[0];
+  const masteryBadges = [
+    {
+      label: 'First win',
+      detail: 'Complete 1 challenge',
+      earned: completedChallenges >= 1,
+    },
+    {
+      label: 'Query builder',
+      detail: 'Complete 3 challenges',
+      earned: completedChallenges >= 3,
+    },
+    {
+      label: 'SQL pathfinder',
+      detail: 'Complete all 6',
+      earned: completedChallenges === CHALLENGES.length,
+    },
+  ];
 
   const resetProgress = () => {
     if (!window.confirm('Clear your challenge attempts and completion badges?'))
@@ -1480,7 +1529,7 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Write Lab</p>
-          <p className="text-xs text-[var(--green)]">Phase 18 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 19 · ready</p>
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">
@@ -1528,6 +1577,90 @@ export function WriteLabContextPanel() {
                   ? 'Progress synced to your site'
                   : 'Cloud unavailable · saved on this device'}
           </p>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="rounded-lg border border-[var(--border)] bg-[#0b1018] p-2.5">
+            <p className="text-base font-bold text-[var(--text)]">
+              {passEfficiency}%
+            </p>
+            <p className="mt-0.5 text-[10px] text-[var(--muted)]">
+              Check accuracy
+            </p>
+          </div>
+          <div className="rounded-lg border border-[var(--border)] bg-[#0b1018] p-2.5">
+            <p className="text-base font-bold text-[var(--text)]">
+              {totalAttempts}
+            </p>
+            <p className="mt-0.5 text-[10px] text-[var(--muted)]">Attempts</p>
+          </div>
+          <div className="rounded-lg border border-[var(--border)] bg-[#0b1018] p-2.5">
+            <p className="text-base font-bold text-[var(--text)]">
+              {firstTryWins}
+            </p>
+            <p className="mt-0.5 text-[10px] text-[var(--muted)]">
+              First-try wins
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 rounded-lg border border-[color:rgb(109_141_255_/_28%)] bg-[color:rgb(109_141_255_/_7%)] p-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-[var(--blue-bright)]">
+            {recommendedChallenge ? <Target size={14} /> : <Trophy size={14} />}
+            {recommendedChallenge ? 'Recommended next' : 'Path complete'}
+          </div>
+          {recommendedChallenge ? (
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[var(--text)]">
+                  {recommendedChallenge.challenge.title}
+                </p>
+                <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+                  {recommendedChallenge.progress?.failedAttempts
+                    ? `Retry ${recommendedChallenge.challenge.topic} · ${recommendedChallenge.progress.failedAttempts} failed check${recommendedChallenge.progress.failedAttempts === 1 ? '' : 's'}`
+                    : `${recommendedChallenge.challenge.topic} · ${recommendedChallenge.challenge.difficulty}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedChallenge(recommendedChallenge.challenge.id);
+                  dispatchChallenge(recommendedChallenge.challenge);
+                }}
+                className="flex shrink-0 items-center gap-1 rounded-lg bg-[var(--blue)] px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[var(--blue-bright)]"
+              >
+                {recommendedChallenge.progress ? 'Retry' : 'Start'}
+                <ArrowRight size={12} />
+              </button>
+            </div>
+          ) : (
+            <p className="mt-2 text-xs leading-5 text-[var(--muted-bright)]">
+              You completed every graded SQL challenge.
+            </p>
+          )}
+        </div>
+        <div className="mt-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+            Mastery badges
+          </p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {masteryBadges.map((badge) => (
+              <div
+                key={badge.label}
+                title={badge.detail}
+                className={`rounded-lg border p-2 text-center ${badge.earned ? 'border-[color:rgb(246_199_111_/_38%)] bg-[color:rgb(246_199_111_/_7%)]' : 'border-[var(--border)] bg-[#0b1018] opacity-55'}`}
+              >
+                <Award
+                  size={15}
+                  className={`mx-auto ${badge.earned ? 'text-[#f6c76f]' : 'text-[var(--muted)]'}`}
+                />
+                <p className="mt-1 text-[10px] font-semibold text-[var(--muted-bright)]">
+                  {badge.label}
+                </p>
+                <span className="sr-only">
+                  {badge.earned ? 'Earned' : 'Locked'}: {badge.detail}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="mt-3 space-y-2">
           {CHALLENGES.map((challenge) => {
