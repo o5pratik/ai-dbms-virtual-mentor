@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Award,
   AlertTriangle,
+  ArrowRight,
   Box,
   Check,
   CheckCircle2,
@@ -116,6 +117,7 @@ const CHALLENGES = [
     id: 'students-above-80',
     title: 'Students above 80',
     difficulty: 'Beginner',
+    topic: 'Filtering',
     prompt: 'Return name and marks for students above 80, highest mark first.',
     hint: 'Use WHERE marks > 80 and ORDER BY marks DESC.',
     sql: `-- Return students with marks above 80, highest first.
@@ -128,6 +130,7 @@ ORDER BY marks DESC;`,
     id: 'department-counts',
     title: 'Count by department',
     difficulty: 'Intermediate',
+    topic: 'Aggregation',
     prompt:
       'Return every department name and its student_count, alphabetically.',
     hint: 'Use LEFT JOIN, COUNT(student_id), GROUP BY, and an alias.',
@@ -141,6 +144,7 @@ ORDER BY d.department_name;`,
     id: 'top-student',
     title: 'Top student',
     difficulty: 'Beginner',
+    topic: 'Sorting',
     prompt: 'Return only the name and marks of the highest-scoring student.',
     hint: 'Sort marks descending, then limit the result to one row.',
     sql: `-- Return only the highest-scoring student.
@@ -148,7 +152,60 @@ SELECT name, marks
 FROM Student
 ORDER BY marks DESC;`,
   },
+  {
+    id: 'student-departments',
+    title: 'Student departments',
+    difficulty: 'Intermediate',
+    topic: 'JOIN',
+    prompt: 'Return each student name and department_name, sorted by name.',
+    hint: 'Join Student and Department where their dept_id values match.',
+    sql: `-- Match every student to a department.
+SELECT s.name, d.department_name
+FROM Student AS s
+JOIN Department AS d
+ORDER BY s.name;`,
+  },
+  {
+    id: 'department-averages',
+    title: 'Department averages',
+    difficulty: 'Advanced',
+    topic: 'Aggregation',
+    prompt:
+      'Return department_name and average_marks rounded to 1 decimal, highest first.',
+    hint: 'Combine JOIN, AVG, ROUND, GROUP BY, an alias, and ORDER BY.',
+    sql: `-- Calculate one average_marks value per department.
+SELECT d.department_name, s.marks
+FROM Department AS d
+JOIN Student AS s ON s.dept_id = d.dept_id
+ORDER BY s.marks DESC;`,
+  },
+  {
+    id: 'above-average-students',
+    title: 'Above-average students',
+    difficulty: 'Advanced',
+    topic: 'Subquery',
+    prompt:
+      'Return name and marks for students above the overall average, highest first.',
+    hint: 'Compare marks with a scalar subquery that calculates AVG(marks).',
+    sql: `-- Return students whose marks exceed the overall average.
+SELECT name, marks
+FROM Student
+WHERE marks > 0
+ORDER BY marks DESC;`,
+  },
 ];
+
+function dispatchChallenge(challenge: (typeof CHALLENGES)[number]) {
+  window.dispatchEvent(
+    new CustomEvent('write-lab-challenge', {
+      detail: {
+        id: challenge.id,
+        sql: challenge.sql,
+        title: challenge.title,
+      },
+    }),
+  );
+}
 
 function displayValue(value: SqlValue) {
   if (value === null)
@@ -186,6 +243,7 @@ export function WriteLab() {
   const [gradeResult, setGradeResult] = useState<{
     passed: boolean;
     feedback: string;
+    nextChallengeId?: string;
   } | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const selectionReaderRef = useRef<(() => string) | null>(null);
@@ -495,8 +553,21 @@ export function WriteLab() {
       const passed = Boolean(response.passed);
       const feedback = response.feedback ?? 'Your answer was checked.';
       const progress = recordChallengeAttempt(activeChallenge, passed);
+      const activeIndex = CHALLENGES.findIndex(
+        (challenge) => challenge.id === activeChallenge,
+      );
+      const nextChallenge = passed
+        ? [
+            ...CHALLENGES.slice(activeIndex + 1),
+            ...CHALLENGES.slice(0, activeIndex),
+          ].find((challenge) => !progress[challenge.id]?.passed)
+        : undefined;
       setResults(response.results ?? []);
-      setGradeResult({ passed, feedback });
+      setGradeResult({
+        passed,
+        feedback,
+        nextChallengeId: nextChallenge?.id,
+      });
       window.dispatchEvent(
         new CustomEvent('write-lab-progress', { detail: progress }),
       );
@@ -513,6 +584,13 @@ export function WriteLab() {
     } finally {
       setGrading(false);
     }
+  };
+
+  const openNextChallenge = () => {
+    const nextChallenge = CHALLENGES.find(
+      (challenge) => challenge.id === gradeResult?.nextChallengeId,
+    );
+    if (nextChallenge) dispatchChallenge(nextChallenge);
   };
   useEffect(() => {
     runRef.current = (script) => {
@@ -938,6 +1016,16 @@ export function WriteLab() {
                         <p className="mt-1 text-xs leading-5 text-[var(--muted-bright)]">
                           {gradeResult.feedback}
                         </p>
+                        {gradeResult.passed && gradeResult.nextChallengeId ? (
+                          <button
+                            type="button"
+                            onClick={openNextChallenge}
+                            className="mt-3 flex items-center gap-1.5 rounded-lg border border-[color:rgb(72_213_151_/_30%)] bg-[color:rgb(72_213_151_/_8%)] px-3 py-2 text-xs font-semibold text-[var(--green)] hover:bg-[color:rgb(72_213_151_/_13%)]"
+                          >
+                            Next challenge
+                            <ArrowRight size={13} />
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   </section>
@@ -1205,7 +1293,7 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Write Lab</p>
-          <p className="text-xs text-[var(--green)]">Phase 15 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 16 · ready</p>
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">
@@ -1247,15 +1335,7 @@ export function WriteLabContextPanel() {
                 type="button"
                 onClick={() => {
                   setSelectedChallenge(challenge.id);
-                  window.dispatchEvent(
-                    new CustomEvent('write-lab-challenge', {
-                      detail: {
-                        id: challenge.id,
-                        sql: challenge.sql,
-                        title: challenge.title,
-                      },
-                    }),
-                  );
+                  dispatchChallenge(challenge);
                 }}
                 className={`w-full rounded-lg border bg-[#0b1018] p-3 text-left ${progress?.passed ? 'border-[color:rgb(72_213_151_/_38%)]' : selectedChallenge === challenge.id ? 'border-[color:rgb(246_199_111_/_45%)]' : 'border-[var(--border)] hover:border-[color:rgb(246_199_111_/_38%)]'}`}
               >
@@ -1267,7 +1347,7 @@ export function WriteLabContextPanel() {
                     {challenge.title}
                   </strong>
                   <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] text-[var(--muted)]">
-                    {challenge.difficulty}
+                    {challenge.topic} · {challenge.difficulty}
                   </span>
                 </span>
                 <span className="mt-1.5 block text-xs leading-5 text-[var(--muted-bright)]">
