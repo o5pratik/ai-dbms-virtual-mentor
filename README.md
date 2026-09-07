@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 27 adds contextual next-question guidance to every AI Mentor answer so students can continue learning without deciding what to ask next. Suggested follow-ups persist with each account-isolated conversation alongside recent-history recovery and clearing controls. The mentor uses each student's current SQL, schema, and latest SQLite error to explain what to do next and offer review-before-run examples. ChatGPT sign-in and account-isolated query history, saved queries, lesson completion, and challenge progress let students safely share one deployment. The editable ER diagram remains actionable and refreshes from the real browser database after table and relationship changes. The two-mode SQL Playground can query the protected CollegeDB or switch to an editable, locally recoverable copy for DDL, DML, and transactions. It also includes challenge mastery insights, cloud-synced progress, progressive coaching, a six-step graded path, schema-aware mentor repairs, SQLite file import, adaptive curriculum, execution plans, and persistent learning tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 28 opens directly in a simplified editable SQL workspace where students can write programs, run them, inspect output, and see table changes in the ER diagram. Secondary navigation, database actions, challenges, and starter examples stay available without crowding the editor. Phase 27 added contextual next-question guidance to every AI Mentor answer, persisted with each account-isolated conversation. ChatGPT sign-in and account-isolated query history, saved SQL, lesson completion, and challenge progress let students safely share one deployment. The protected CollegeDB remains available as an optional read-only reference.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -123,7 +123,7 @@ Each response includes a `source` field (`groq` or `built-in`) so the interface 
 
 Local CollegeDB is created and seeded automatically when FastAPI starts. The hosted D1 database is initialized through `drizzle/0000_college_schema.sql` during deployment. Both contain `Student`, `Course`, `Teacher`, `Department`, and `Enrollment`.
 
-SQL Playground starts in protected CollegeDB query mode. Its **Editable session** mode runs a separate `EditableDB` inside a Web Worker, seeded with the five CollegeDB learning tables. It can open SQLite files up to 20 MB and run SQLite `CREATE`, `ALTER`, `DROP`, `INSERT`, `UPDATE`, `DELETE`, transactions, PRAGMA, selected statements, and multi-statement scripts without damaging the master CollegeDB. Local recovery and `.sqlite` export preserve learner work. Vendor-specific MySQL, PostgreSQL, Oracle, or SQL Server procedures still require their matching database engine.
+SQL Workspace starts in **Editable SQL** mode using a separate `EditableDB` inside a Web Worker, seeded with the five CollegeDB learning tables. It can open SQLite files up to 20 MB and run SQLite `CREATE`, `ALTER`, `DROP`, `INSERT`, `UPDATE`, `DELETE`, transactions, PRAGMA, selected statements, and multi-statement scripts without damaging the master CollegeDB. Successful table changes open the refreshed ER diagram automatically; query results remain in Output. Local recovery and `.sqlite` export preserve learner work. The protected CollegeDB remains available from the mode switch for read-only reference queries. Vendor-specific MySQL, PostgreSQL, Oracle, or SQL Server procedures still require their matching database engine.
 
 ## Tests and build
 
@@ -160,3 +160,4 @@ npm run build
 24. **Completed — Phase 25:** contextual AI doubt assistance in EditableDB with current-script, current-schema, and latest-error awareness plus review-before-run SQL examples.
 25. **Completed — Phase 26:** persistent, account-isolated AI Mentor conversations with follow-up context, recent-history recovery, and clear-history controls.
 26. **Completed — Phase 27:** contextual next-question suggestions for every AI Mentor answer, including persistence with account-isolated conversation history.
+27. **Completed — Phase 28:** editable-first landing, simplified navigation and actions, prioritized Output and ER Diagram, and automatic ER refresh after table changes.
