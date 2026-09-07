@@ -7,9 +7,9 @@ import {
   AlertTriangle,
   ArrowRight,
   Bot,
-  Box,
   Check,
   CheckCircle2,
+  ChevronDown,
   Clipboard,
   Cloud,
   CloudOff,
@@ -19,17 +19,15 @@ import {
   Eye,
   FileCode2,
   FileUp,
-  FlaskConical,
   HardDrive,
   Lightbulb,
   MessageSquareText,
+  MoreHorizontal,
   Play,
   RotateCcw,
-  ShieldCheck,
   Sparkles,
   Table2,
   Target,
-  TimerReset,
   Trophy,
   Trash2,
   Undo2,
@@ -68,6 +66,13 @@ import {
   savePracticeCheckpoint,
   savePracticeSnapshot,
 } from '../services/practice-storage';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ErDiagram } from './ErDiagram';
 
 type SqlValue = number | string | Uint8Array | null;
@@ -657,6 +662,9 @@ export function WriteLab() {
       setResults(response.results ?? []);
       setSchema(response.schema ?? []);
       setDiagram(response.diagram ?? null);
+      if (/\b(?:CREATE|ALTER|DROP)\s+TABLE\b/i.test(script)) {
+        setActiveTab('er');
+      }
       const resultCount = response.results?.length ?? 0;
       setMessage(
         `${resultCount ? `${resultCount} result set${resultCount === 1 ? '' : 's'}` : 'Script completed'} · last statement changed ${response.changes ?? 0} row(s) · ${(response.elapsedMs ?? 0).toFixed(1)} ms`,
@@ -1026,16 +1034,18 @@ LIMIT 100;`;
               Ctrl ↵
             </kbd>
           </button>
-          <button
-            type="button"
-            onClick={runSelection}
-            disabled={!ready || running || !hasSelection}
-            title="Run only the highlighted SQL"
-            className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"
-          >
-            <CodeXml size={14} />
-            Run selection
-          </button>
+          {hasSelection ? (
+            <button
+              type="button"
+              onClick={runSelection}
+              disabled={!ready || running}
+              title="Run only the highlighted SQL"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40"
+            >
+              <CodeXml size={14} />
+              Run selection
+            </button>
+          ) : null}
           {activeChallenge ? (
             <button
               type="button"
@@ -1048,59 +1058,63 @@ LIMIT 100;`;
               {grading ? 'Checking…' : 'Check answer'}
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={running}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40"
-          >
-            <FileUp size={14} />
-            Open SQLite
-          </button>
-          <button
-            type="button"
-            onClick={() => void undoLastRun()}
-            disabled={!ready || running || !undoAvailable}
-            title={undoLabel || 'A checkpoint appears after your first run'}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Undo2 size={14} />
-            {undoing ? 'Restoring…' : 'Undo last run'}
-          </button>
-          <button
-            type="button"
-            onClick={reset}
-            disabled={running}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40"
-          >
-            <RotateCcw size={14} />
-            Reset database
-          </button>
-          <button
-            type="button"
-            onClick={exportDatabase}
-            disabled={!ready || running}
-            className="hidden items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)] disabled:opacity-40 md:flex"
-          >
-            <Download size={14} />
-            Export .sqlite
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]"
+              aria-label="More database actions"
+            >
+              <MoreHorizontal size={15} />
+              More
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-56 border border-[var(--border)] bg-[var(--surface-raised)] p-1.5 text-[var(--text)] shadow-2xl"
+            >
+              <DropdownMenuItem
+                onClick={() => fileInputRef.current?.click()}
+                disabled={running}
+                className="gap-2 px-2.5 py-2 text-sm focus:bg-[var(--surface-muted)]"
+              >
+                <FileUp size={14} /> Open SQLite file
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => void undoLastRun()}
+                disabled={!ready || running || !undoAvailable}
+                title={undoLabel || 'Available after your first run'}
+                className="gap-2 px-2.5 py-2 text-sm focus:bg-[var(--surface-muted)]"
+              >
+                <Undo2 size={14} /> {undoing ? 'Restoring…' : 'Undo last run'}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={exportDatabase}
+                disabled={!ready || running}
+                className="gap-2 px-2.5 py-2 text-sm focus:bg-[var(--surface-muted)]"
+              >
+                <Download size={14} /> Export database
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-[var(--border)]" />
+              <DropdownMenuItem
+                onClick={reset}
+                disabled={running}
+                variant="destructive"
+                className="gap-2 px-2.5 py-2 text-sm focus:bg-[color:rgb(255_107_135_/_10%)]"
+              >
+                <RotateCcw size={14} /> Reset database
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="hidden items-center sm:flex">
           <span
             title={
               lastSavedAt
                 ? `Last database snapshot: ${new Date(lastSavedAt).toLocaleString()}`
                 : undefined
             }
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${saveState === 'unavailable' ? 'border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_6%)] text-[#f6c76f]' : 'border-[color:rgb(109_141_255_/_22%)] bg-[color:rgb(109_141_255_/_7%)] text-[var(--blue-bright)]'}`}
+            className={`flex items-center gap-2 text-xs font-medium ${saveState === 'unavailable' ? 'text-[#f6c76f]' : 'text-[var(--muted)]'}`}
           >
             <HardDrive size={14} />
             {saveLabel}
-          </span>
-          <span className="flex items-center gap-2 rounded-full border border-[color:rgb(72_213_151_/_22%)] bg-[color:rgb(72_213_151_/_7%)] px-3 py-1.5 text-xs font-semibold text-[var(--green)]">
-            <ShieldCheck size={14} />
-            Master CollegeDB stays safe
           </span>
         </div>
       </div>
@@ -1166,7 +1180,7 @@ LIMIT 100;`;
             role="tablist"
             aria-label="Editable Playground output"
           >
-            {(['output', 'schema', 'er', 'messages'] as const).map((tab) => (
+            {(['output', 'er', 'schema', 'messages'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -1827,18 +1841,7 @@ export function WriteLabContextPanel() {
 
   return (
     <aside className="app-mentor overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)] p-4">
-      <div className="flex items-center gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:rgb(72_213_151_/_10%)] text-[var(--green)]">
-          <FlaskConical size={18} />
-        </div>
-        <div>
-          <p className="text-sm font-bold">Editable Playground</p>
-          <p className="text-xs text-[var(--green)]">
-            Phase 27 · guided follow-ups
-          </p>
-        </div>
-      </div>
-      <section className="mt-3 overflow-hidden rounded-xl border border-[color:rgb(155_124_255_/_32%)] bg-[linear-gradient(145deg,rgb(155_124_255_/_9%),rgb(109_141_255_/_4%))]">
+      <section className="overflow-hidden rounded-xl border border-[color:rgb(155_124_255_/_32%)] bg-[linear-gradient(145deg,rgb(155_124_255_/_9%),rgb(109_141_255_/_4%))]">
         <div className="border-b border-[color:rgb(155_124_255_/_20%)] p-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:rgb(155_124_255_/_16%)] text-[#b9a5ff]">
@@ -2085,17 +2088,20 @@ export function WriteLabContextPanel() {
           </div>
         ) : null}
       </section>
-      <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">
-        <div className="flex items-center gap-2">
-          <Award size={17} className="text-[#f6c76f]" />
-          <p className="text-xs font-bold uppercase tracking-wider text-[#f6c76f]">
-            SQL challenges
-          </p>
-          <span className="ml-auto text-xs font-semibold text-[var(--muted-bright)]">
+      <details className="group mt-3 overflow-hidden rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)]">
+        <summary className="flex cursor-pointer list-none items-center gap-2 p-3.5 text-sm font-semibold text-[var(--muted-bright)] hover:bg-[color:rgb(246_199_111_/_5%)]">
+          <Award size={16} className="text-[#f6c76f]" />
+          Practice challenges
+          <span className="ml-auto text-xs text-[var(--muted)]">
             {completedChallenges}/{CHALLENGES.length}
           </span>
-        </div>
-        <div className="mt-3">
+          <ChevronDown
+            size={14}
+            className="text-[var(--muted)] transition group-open:rotate-180"
+          />
+        </summary>
+        <div className="border-t border-[color:rgb(246_199_111_/_16%)] p-4">
+        <div>
           <progress
             aria-label="SQL challenge completion"
             max={CHALLENGES.length}
@@ -2255,20 +2261,18 @@ export function WriteLabContextPanel() {
             );
           })}
         </div>
-      </div>
-      <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-4">
-        <ShieldCheck size={18} className="text-[var(--green)]" />
-        <h2 className="mt-3 text-sm font-bold">Safe SQL sandbox</h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted-bright)]">
-          Create, alter, insert, update, delete, drop, and use transactions in a
-          disposable SQLite database. CollegeDB is never modified.
-        </p>
-      </div>
-      <div className="mt-3 rounded-xl border border-[var(--border)] p-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-          Try an example
-        </p>
-        <div className="mt-3 space-y-2">
+        </div>
+      </details>
+      <details className="group mt-3 overflow-hidden rounded-xl border border-[var(--border)]">
+        <summary className="flex cursor-pointer list-none items-center gap-2 p-3.5 text-sm font-semibold text-[var(--muted-bright)] hover:bg-[var(--surface-raised)]">
+          <FileCode2 size={15} className="text-[var(--blue-bright)]" />
+          Starter examples
+          <ChevronDown
+            size={14}
+            className="ml-auto text-[var(--muted)] transition group-open:rotate-180"
+          />
+        </summary>
+        <div className="space-y-2 border-t border-[var(--border)] p-3">
           {EXAMPLES.map((example) => (
             <button
               key={example.label}
@@ -2284,52 +2288,11 @@ export function WriteLabContextPanel() {
               {example.label}
             </button>
           ))}
+          <p className="px-1 pt-1 text-xs leading-5 text-[var(--muted)]">
+            SQLite only. Your editable database is isolated and restored on this device.
+          </p>
         </div>
-      </div>
-      <div className="mt-3 space-y-2 rounded-xl border border-[var(--border)] p-4 text-sm text-[var(--muted-bright)]">
-        <p className="flex items-center gap-2">
-          <FileUp size={15} className="text-[var(--green)]" />
-          Open SQLite files up to 20 MB
-        </p>
-        <p className="flex items-center gap-2">
-          <CodeXml size={15} className="text-[var(--blue-bright)]" />
-          Run highlighted statements
-        </p>
-        <p className="flex items-center gap-2">
-          <Box size={15} className="text-[var(--violet)]" />
-          Database restores on this device
-        </p>
-        <p className="flex items-center gap-2">
-          <Table2 size={15} className="text-[var(--violet)]" />
-          ER diagram follows changes and opens table queries
-        </p>
-        <p className="flex items-center gap-2">
-          <Undo2 size={15} className="text-[var(--blue-bright)]" />
-          Undo the last run, reset, or import
-        </p>
-        <p className="flex items-center gap-2">
-          <TimerReset size={15} className="text-[#f6c76f]" />
-          5-second safety limit
-        </p>
-        <p className="flex items-center gap-2">
-          <Download size={15} className="text-[var(--blue-bright)]" />
-          Export for a portable backup
-        </p>
-      </div>
-      <div className="mt-3 rounded-xl border border-[color:rgb(109_141_255_/_25%)] bg-[color:rgb(109_141_255_/_5%)] p-4">
-        <WandSparkles size={18} className="text-[var(--blue-bright)]" />
-        <h2 className="mt-3 text-sm font-bold">Mentor-assisted repairs</h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted-bright)]">
-          After a failed run, open Messages and choose Fix with mentor. The
-          suggestion uses your current schema and only changes the editor after
-          you approve it.
-        </p>
-      </div>
-      <div className="mt-3 rounded-xl border border-dashed border-[color:rgb(246_199_111_/_30%)] bg-[color:rgb(246_199_111_/_5%)] p-3 text-xs leading-5 text-[var(--muted-bright)]">
-        <strong className="text-[#f6c76f]">SQLite only.</strong> MySQL,
-        PostgreSQL, Oracle, and SQL Server procedures or vendor-specific syntax
-        need their own database engine.
-      </div>
+      </details>
     </aside>
   );
 }

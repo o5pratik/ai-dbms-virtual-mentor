@@ -3,7 +3,7 @@
 /* oxlint-disable next/no-html-link-for-pages -- SIWC sign-out must use a top-level browser navigation. */
 
 import { useCallback, useEffect, useState } from 'react';
-import { AlignLeft, Bell, ChevronDown, CircleHelp, Database, Eraser, Lightbulb, LogOut, PencilLine, Play, Save as SaveIcon, Sparkles, WandSparkles, Workflow } from 'lucide-react';
+import { AlignLeft, Database, Eraser, Lightbulb, LogOut, PencilLine, Play, Save as SaveIcon, Sparkles, WandSparkles, Workflow } from 'lucide-react';
 
 import { analyzeQuery, analyzeSchema, clearHistory, deleteSavedQuery, executeQuery, explainQuery, fixQuery, getHistory, getProgress, getQueryPlan, getSavedQueries, getSchema, saveQuery, setTopicProgress, suggestQuery, type HistoryItem, type ProgressItem, type QueryAnalysis, type QueryPlanResponse, type QueryResponse, type SavedQueryItem, type SchemaResponse } from '../services/api';
 import { formatSql } from '../services/sql-intelligence';
@@ -38,7 +38,7 @@ export function MentorWorkspace({ user }: { user: { email: string; name: string 
   const [instruction, setInstruction] = useState('');
   const [mentorView, setMentorView] = useState<MentorView>({ kind: 'welcome' });
   const [activeView, setActiveView] = useState<WorkspaceView>('playground');
-  const [playgroundMode, setPlaygroundMode] = useState<'query' | 'edit'>('query');
+  const [playgroundMode, setPlaygroundMode] = useState<'query' | 'edit'>('edit');
   const [selectedTable, setSelectedTable] = useState('Student');
   const [schema, setSchema] = useState<SchemaResponse | null>(null);
   const [schemaError, setSchemaError] = useState('');
@@ -285,28 +285,27 @@ export function MentorWorkspace({ user }: { user: { email: string; name: string 
             </div>
           </div>
           <div className="hidden h-5 w-px bg-[var(--border)] sm:block" />
-          <button type="button" className="hidden items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-[11px] text-[var(--muted-bright)] sm:flex">
-            <span className={`h-1.5 w-1.5 rounded-full ${activeView === 'write-lab' || (activeView === 'playground' && playgroundMode === 'edit') ? 'bg-[#f6c76f]' : 'bg-[var(--green)]'}`} /> {activeView === 'write-lab' || (activeView === 'playground' && playgroundMode === 'edit') ? 'EditableDB' : 'CollegeDB'} <ChevronDown size={12} />
-          </button>
+          <div className="hidden items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-xs text-[var(--muted-bright)] sm:flex">
+            <span className={`h-1.5 w-1.5 rounded-full ${activeView === 'write-lab' || (activeView === 'playground' && playgroundMode === 'edit') ? 'bg-[var(--green)]' : 'bg-[var(--blue)]'}`} />
+            {activeView === 'write-lab' || (activeView === 'playground' && playgroundMode === 'edit') ? 'EditableDB' : 'CollegeDB reference'}
+          </div>
         </div>
         <div className="flex items-center gap-1">
-          <button type="button" title="Help" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)]"><CircleHelp size={16} /></button>
-          <button type="button" title="Notifications" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)]"><Bell size={16} /></button>
           <div className="ml-2 hidden text-right sm:block"><p className="max-w-36 truncate text-[10px] font-semibold">{user.name}</p><p className="max-w-36 truncate text-[9px] text-[var(--muted)]">{user.email}</p></div>
           <div className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--blue),var(--violet))] text-[10px] font-bold" title={user.email}>{initials}</div>
           <a href="/signout-with-chatgpt?return_to=/" target="_top" title="Sign out" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]"><LogOut size={15} /></a>
         </div>
       </header>
 
-      <Sidebar activeView={activeView} selectedTable={selectedTable} onNavigate={navigateTo} onSelectTable={setSelectedTable} />
+      <Sidebar activeView={activeView} onNavigate={navigateTo} />
 
       {activeView === 'playground' ? <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] bg-[#0c111a] px-4 py-2">
           <div className="flex items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1" aria-label="Playground database mode">
-            <button type="button" onClick={() => setPlaygroundMode('query')} aria-pressed={playgroundMode === 'query'} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${playgroundMode === 'query' ? 'bg-[var(--blue)] text-white' : 'text-[var(--muted-bright)] hover:text-[var(--text)]'}`}><Database size={13} /> CollegeDB query</button>
-            <button type="button" onClick={() => setPlaygroundMode('edit')} aria-pressed={playgroundMode === 'edit'} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${playgroundMode === 'edit' ? 'bg-[var(--green)] text-[#07130e]' : 'text-[var(--muted-bright)] hover:text-[var(--text)]'}`}><PencilLine size={13} /> Editable session</button>
+            <button type="button" onClick={() => setPlaygroundMode('edit')} aria-pressed={playgroundMode === 'edit'} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${playgroundMode === 'edit' ? 'bg-[var(--green)] text-[#07130e]' : 'text-[var(--muted-bright)] hover:text-[var(--text)]'}`}><PencilLine size={13} /> Editable SQL</button>
+            <button type="button" onClick={() => setPlaygroundMode('query')} aria-pressed={playgroundMode === 'query'} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${playgroundMode === 'query' ? 'bg-[var(--blue)] text-white' : 'text-[var(--muted-bright)] hover:text-[var(--text)]'}`}><Database size={13} /> CollegeDB reference</button>
           </div>
-          <p className="text-xs text-[var(--muted)]">{playgroundMode === 'query' ? 'Read-only reference database' : 'Create, insert, update, delete, and drop safely'}</p>
+          <p className="text-xs text-[var(--muted)]">{playgroundMode === 'query' ? 'Read-only examples and reference data' : 'Write, run, and visualize your own SQLite program'}</p>
         </div>
         {playgroundMode === 'query' ? <>
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-2.5">
