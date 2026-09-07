@@ -36,6 +36,11 @@ export type MentorAnswerResponse = {
   caution: string;
   source: TutorSource;
 };
+export type MentorConversationItem = MentorAnswerResponse & {
+  id: number | null;
+  question: string;
+  created_at: string;
+};
 
 export type SchemaColumn = {
   name: string;
@@ -222,11 +227,23 @@ export function askEditableMentor(
   schema = '',
   databaseError = '',
 ) {
-  return postTutor<MentorAnswerResponse>('/api/mentor-chat', {
+  return postTutor<MentorConversationItem>('/api/mentor-chat', {
     question,
     current_sql: currentSql,
     schema,
     database_error: databaseError,
+  });
+}
+
+export async function getMentorConversation() {
+  return (
+    await jsonRequest<{ items: MentorConversationItem[] }>('/api/mentor-chat')
+  ).items;
+}
+
+export async function clearMentorConversation() {
+  return jsonRequest<{ success: boolean }>('/api/mentor-chat', {
+    method: 'DELETE',
   });
 }
 

@@ -15,6 +15,12 @@ database.exec(
     'utf8',
   ),
 );
+database.exec(
+  fs.readFileSync(
+    path.join(projectRoot, 'drizzle', '0004_phase26_mentor_conversations.sql'),
+    'utf8',
+  ),
+);
 
 function scalar(sql, params = []) {
   const statement = database.prepare(sql);
@@ -57,6 +63,43 @@ database.run(
 );
 assert.equal(scalar('SELECT passed FROM UserChallengeProgress WHERE owner_id = ?', ['student-a']), 1);
 assert.equal(scalar('SELECT passed FROM UserChallengeProgress WHERE owner_id = ?', ['student-b']), 0);
+
+database.run(
+  `INSERT INTO UserMentorConversation (owner_id, question, answer)
+   VALUES (?, ?, ?), (?, ?, ?)`,
+  [
+    'student-a',
+    'How does JOIN work?',
+    'Match related keys.',
+    'student-b',
+    'How does GROUP BY work?',
+    'Group rows before aggregation.',
+  ],
+);
+assert.equal(
+  scalar(
+    'SELECT COUNT(*) FROM UserMentorConversation WHERE owner_id = ?',
+    ['student-a'],
+  ),
+  1,
+);
+database.run('DELETE FROM UserMentorConversation WHERE owner_id = ?', [
+  'student-a',
+]);
+assert.equal(
+  scalar(
+    'SELECT COUNT(*) FROM UserMentorConversation WHERE owner_id = ?',
+    ['student-a'],
+  ),
+  0,
+);
+assert.equal(
+  scalar(
+    'SELECT COUNT(*) FROM UserMentorConversation WHERE owner_id = ?',
+    ['student-b'],
+  ),
+  1,
+);
 
 database.close();
 console.log('User-scoped productivity isolation passed.');
