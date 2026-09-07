@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:workers';
 
+import { getAuthenticatedUser } from '@/lib/authenticated-user';
 import { recordQueryHistory } from '@/lib/productivity-store';
 import { validateReadOnlyQuery } from '@/lib/query-safety';
 
@@ -11,7 +12,13 @@ type CellValue = string | number | null;
 function normalizeCell(value: unknown): CellValue {
   if (value === null || typeof value === 'string' || typeof value === 'number') return value;
   if (typeof value === 'bigint') return Number(value);
-  return String(value);
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (value === undefined) return '';
+  try {
+    return JSON.stringify(value) ?? '';
+  } catch {
+    return '[unsupported value]';
+  }
 }
 
 function errorResponse(message: string, status = 400) {
@@ -31,6 +38,8 @@ function errorResponse(message: string, status = 400) {
 export async function POST(request: Request) {
   const started = performance.now();
   let historyQuery = '';
+  const user = getAuthenticatedUser(request.headers);
+  if (!user) return errorResponse('Sign in with ChatGPT to run CollegeDB queries.', 401);
 
   try {
     const payload = (await request.json()) as ExecuteRequest;
@@ -38,18 +47,18 @@ export async function POST(request: Request) {
     const query = validateReadOnlyQuery(payload.query);
     const database = (env as unknown as { DB: D1Database }).DB;
     const raw = await database.prepare(query).raw<unknown[]>({ columnNames: true });
-    const [columnRow = [], ...resultRows] = raw;
+    const [columnRow, ...resultRows] = raw;
 
     if (resultRows.length > MAX_RESULT_ROWS) {
       const message = `This query returns more than ${MAX_RESULT_ROWS} rows. Add a LIMIT clause and try again.`;
-      await recordQueryHistory(query, false, 0, Math.round((performance.now() - started) * 100) / 100, message);
+      await recordQueryHistory(user.id, query, false, 0, Math.round((performance.now() - started) * 100) / 100, message);
       return errorResponse(
         message,
       );
     }
 
     const executionTime = Math.round((performance.now() - started) * 100) / 100;
-    await recordQueryHistory(query, true, resultRows.length, executionTime, null);
+    await recordQueryHistory(user.id, query, true, resultRows.length, executionTime, null);
     return Response.json({
       success: true,
       columns: columnRow.map(String),
@@ -60,7 +69,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'The query could not be executed.';
-    if (historyQuery) await recordQueryHistory(historyQuery, false, 0, Math.round((performance.now() - started) * 100) / 100, message);
+    if (historyQuery) await recordQueryHistory(user.id, historyQuery, false, 0, Math.round((performance.now() - started) * 100) / 100, message);
     return errorResponse(message);
   }
 }

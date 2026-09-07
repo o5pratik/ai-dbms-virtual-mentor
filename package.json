@@ -10,6 +10,7 @@
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "test:sql-lab": "node scripts/test-sql-lab-worker.mjs",
+    "test:user-isolation": "node scripts/test-user-isolation.mjs",
     "lint": "oxlint",
     "format": "oxfmt"
   },
