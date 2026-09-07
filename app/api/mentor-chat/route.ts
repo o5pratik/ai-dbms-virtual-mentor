@@ -17,6 +17,7 @@ type MentorConversationRecord = {
   concepts_json: string;
   example_sql: string;
   caution: string;
+  follow_ups_json: string;
   source: MentorAnswer['source'];
   created_at: string;
 };
@@ -41,6 +42,7 @@ function presentConversation(record: MentorConversationRecord) {
     concepts: parseStringList(record.concepts_json),
     example_sql: record.example_sql,
     caution: record.caution,
+    follow_ups: parseStringList(record.follow_ups_json),
     source: record.source,
     created_at: record.created_at,
   };
@@ -52,7 +54,7 @@ export async function GET(request: Request) {
   const result = await productivityDb()
     .prepare(
       `SELECT id, question, answer, steps_json, concepts_json, example_sql,
-              caution, source, created_at
+              caution, follow_ups_json, source, created_at
        FROM UserMentorConversation
        WHERE owner_id = ?
        ORDER BY id DESC
@@ -125,8 +127,8 @@ export async function POST(request: Request) {
         .prepare(
           `INSERT INTO UserMentorConversation
              (owner_id, question, answer, steps_json, concepts_json,
-              example_sql, caution, source)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              example_sql, caution, follow_ups_json, source)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           user.id,
@@ -136,6 +138,7 @@ export async function POST(request: Request) {
           JSON.stringify(answer.concepts),
           answer.example_sql,
           answer.caution,
+          JSON.stringify(answer.follow_ups),
           answer.source,
         )
         .run();

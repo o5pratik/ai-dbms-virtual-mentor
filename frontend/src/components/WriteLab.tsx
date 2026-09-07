@@ -1834,7 +1834,7 @@ export function WriteLabContextPanel() {
         <div>
           <p className="text-sm font-bold">Editable Playground</p>
           <p className="text-xs text-[var(--green)]">
-            Phase 26 · conversation ready
+            Phase 27 · guided follow-ups
           </p>
         </div>
       </div>
@@ -2057,6 +2057,29 @@ export function WriteLabContextPanel() {
               <div className="flex gap-2 rounded-lg border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_6%)] p-3 text-xs leading-5 text-[#e4c98e]">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                 {mentorAnswer.caution}
+              </div>
+            ) : null}
+            {mentorAnswer.follow_ups.length ? (
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                  Continue learning
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {mentorAnswer.follow_ups.map((followUp) => (
+                    <button
+                      key={followUp}
+                      type="button"
+                      onClick={() => setMentorQuestion(followUp)}
+                      className="group flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[#0b1018] px-3 py-2 text-left text-xs leading-5 text-[var(--muted-bright)] hover:border-[color:rgb(155_124_255_/_42%)] hover:text-[var(--text)]"
+                    >
+                      <span>{followUp}</span>
+                      <ArrowRight
+                        size={13}
+                        className="shrink-0 text-[#b9a5ff] transition group-hover:translate-x-0.5"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : null}
           </div>

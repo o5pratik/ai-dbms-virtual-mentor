@@ -80,6 +80,7 @@ export const productivitySchemaStatements = [
     concepts_json TEXT NOT NULL DEFAULT '[]',
     example_sql TEXT NOT NULL DEFAULT '',
     caution TEXT NOT NULL DEFAULT '',
+    follow_ups_json TEXT NOT NULL DEFAULT '[]',
     source TEXT NOT NULL DEFAULT 'built-in' CHECK (source IN ('groq', 'built-in')),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,

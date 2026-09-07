@@ -21,6 +21,12 @@ database.exec(
     'utf8',
   ),
 );
+database.exec(
+  fs.readFileSync(
+    path.join(projectRoot, 'drizzle', '0005_phase27_mentor_followups.sql'),
+    'utf8',
+  ),
+);
 
 function scalar(sql, params = []) {
   const statement = database.prepare(sql);
@@ -65,15 +71,17 @@ assert.equal(scalar('SELECT passed FROM UserChallengeProgress WHERE owner_id = ?
 assert.equal(scalar('SELECT passed FROM UserChallengeProgress WHERE owner_id = ?', ['student-b']), 0);
 
 database.run(
-  `INSERT INTO UserMentorConversation (owner_id, question, answer)
-   VALUES (?, ?, ?), (?, ?, ?)`,
+  `INSERT INTO UserMentorConversation (owner_id, question, answer, follow_ups_json)
+   VALUES (?, ?, ?, ?), (?, ?, ?, ?)`,
   [
     'student-a',
     'How does JOIN work?',
     'Match related keys.',
+    '["How do I join three tables?"]',
     'student-b',
     'How does GROUP BY work?',
     'Group rows before aggregation.',
+    '["When should I use HAVING?"]',
   ],
 );
 assert.equal(
@@ -82,6 +90,13 @@ assert.equal(
     ['student-a'],
   ),
   1,
+);
+assert.equal(
+  scalar(
+    'SELECT follow_ups_json FROM UserMentorConversation WHERE owner_id = ?',
+    ['student-b'],
+  ),
+  '["When should I use HAVING?"]',
 );
 database.run('DELETE FROM UserMentorConversation WHERE owner_id = ?', [
   'student-a',
