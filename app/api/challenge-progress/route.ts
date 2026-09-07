@@ -1,3 +1,4 @@
+import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/authenticated-user';
 import { productivityDb } from '@/lib/productivity-store';
 
 type SyncEntry = {
@@ -8,13 +9,17 @@ type SyncEntry = {
   passed_at?: unknown;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
+  const user = getAuthenticatedUser(request.headers);
+  if (!user) return unauthorizedResponse();
   const result = await productivityDb()
     .prepare(
       `SELECT challenge_id, attempts, failed_attempts, passed, passed_at, updated_at
-       FROM ChallengeProgress
+       FROM UserChallengeProgress
+       WHERE owner_id = ?
        ORDER BY challenge_id`,
     )
+    .bind(user.id)
     .all<{
       challenge_id: string;
       attempts: number;
@@ -27,6 +32,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const user = getAuthenticatedUser(request.headers);
+  if (!user) return unauthorizedResponse();
   const payload = (await request.json()) as { entries?: unknown };
   if (!Array.isArray(payload.entries) || payload.entries.length > 100) {
     return Response.json(
@@ -63,21 +70,22 @@ export async function PUT(request: Request) {
     const statements = entries.map((entry) =>
       productivityDb()
         .prepare(
-          `INSERT INTO ChallengeProgress
-             (challenge_id, attempts, failed_attempts, passed, passed_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-           ON CONFLICT(challenge_id) DO UPDATE SET
-             attempts = MAX(ChallengeProgress.attempts, excluded.attempts),
-             failed_attempts = MAX(ChallengeProgress.failed_attempts, excluded.failed_attempts),
-             passed = MAX(ChallengeProgress.passed, excluded.passed),
+          `INSERT INTO UserChallengeProgress
+             (owner_id, challenge_id, attempts, failed_attempts, passed, passed_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(owner_id, challenge_id) DO UPDATE SET
+             attempts = MAX(UserChallengeProgress.attempts, excluded.attempts),
+             failed_attempts = MAX(UserChallengeProgress.failed_attempts, excluded.failed_attempts),
+             passed = MAX(UserChallengeProgress.passed, excluded.passed),
              passed_at = CASE
-               WHEN ChallengeProgress.passed_at IS NULL THEN excluded.passed_at
-               WHEN excluded.passed_at IS NULL THEN ChallengeProgress.passed_at
-               ELSE MIN(ChallengeProgress.passed_at, excluded.passed_at)
+               WHEN UserChallengeProgress.passed_at IS NULL THEN excluded.passed_at
+               WHEN excluded.passed_at IS NULL THEN UserChallengeProgress.passed_at
+               ELSE MIN(UserChallengeProgress.passed_at, excluded.passed_at)
              END,
              updated_at = CURRENT_TIMESTAMP`,
         )
         .bind(
+          user.id,
           String(entry.challenge_id),
           Number(entry.attempts),
           Number(entry.failed_attempts),
@@ -90,7 +98,9 @@ export async function PUT(request: Request) {
   return Response.json({ success: true });
 }
 
-export async function DELETE() {
-  await productivityDb().prepare('DELETE FROM ChallengeProgress').run();
+export async function DELETE(request: Request) {
+  const user = getAuthenticatedUser(request.headers);
+  if (!user) return unauthorizedResponse();
+  await productivityDb().prepare('DELETE FROM UserChallengeProgress WHERE owner_id = ?').bind(user.id).run();
   return Response.json({ success: true });
 }

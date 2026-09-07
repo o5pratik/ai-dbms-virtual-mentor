@@ -1,7 +1,9 @@
 'use client';
 
+/* oxlint-disable next/no-html-link-for-pages -- SIWC sign-out must use a top-level browser navigation. */
+
 import { useCallback, useEffect, useState } from 'react';
-import { AlignLeft, Bell, ChevronDown, CircleHelp, Database, Eraser, Lightbulb, PencilLine, Play, Save as SaveIcon, Sparkles, WandSparkles, Workflow } from 'lucide-react';
+import { AlignLeft, Bell, ChevronDown, CircleHelp, Database, Eraser, Lightbulb, LogOut, PencilLine, Play, Save as SaveIcon, Sparkles, WandSparkles, Workflow } from 'lucide-react';
 
 import { analyzeQuery, analyzeSchema, clearHistory, deleteSavedQuery, executeQuery, explainQuery, fixQuery, getHistory, getProgress, getQueryPlan, getSavedQueries, getSchema, saveQuery, setTopicProgress, suggestQuery, type HistoryItem, type ProgressItem, type QueryAnalysis, type QueryPlanResponse, type QueryResponse, type SavedQueryItem, type SchemaResponse } from '../services/api';
 import { formatSql } from '../services/sql-intelligence';
@@ -22,7 +24,7 @@ JOIN Course AS c ON e.course_id = c.course_id
 WHERE e.semester = 4
 ORDER BY s.name;`;
 
-export function MentorWorkspace() {
+export function MentorWorkspace({ user }: { user: { email: string; name: string } }) {
   const [query, setQuery] = useState(STARTER_QUERY);
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -262,6 +264,7 @@ export function MentorWorkspace() {
   };
 
   const completedTopics = new Set(progress.filter((item) => item.completed).map((item) => item.topic_id));
+  const initials = user.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'ST';
   const schemaView = activeView === 'schema' || activeView === 'er';
   const navigateTo = (view: WorkspaceView) => {
     if ((view === 'schema' || view === 'er') && !['Student', 'Course', 'Teacher', 'Department', 'Enrollment'].includes(selectedTable)) setSelectedTable('Student');
@@ -289,7 +292,9 @@ export function MentorWorkspace() {
         <div className="flex items-center gap-1">
           <button type="button" title="Help" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)]"><CircleHelp size={16} /></button>
           <button type="button" title="Notifications" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)]"><Bell size={16} /></button>
-          <div className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--blue),var(--violet))] text-[10px] font-bold">ST</div>
+          <div className="ml-2 hidden text-right sm:block"><p className="max-w-36 truncate text-[10px] font-semibold">{user.name}</p><p className="max-w-36 truncate text-[9px] text-[var(--muted)]">{user.email}</p></div>
+          <div className="ml-1 flex h-7 w-7 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--blue),var(--violet))] text-[10px] font-bold" title={user.email}>{initials}</div>
+          <a href="/signout-with-chatgpt?return_to=/" target="_top" title="Sign out" className="rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]"><LogOut size={15} /></a>
         </div>
       </header>
 
