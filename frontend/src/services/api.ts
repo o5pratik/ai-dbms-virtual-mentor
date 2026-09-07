@@ -34,6 +34,7 @@ export type MentorAnswerResponse = {
   concepts: string[];
   example_sql: string;
   caution: string;
+  follow_ups: string[];
   source: TutorSource;
 };
 export type MentorConversationItem = MentorAnswerResponse & {

@@ -121,7 +121,7 @@ export function Sidebar({
       <div className="mt-7 rounded-xl border border-[color:rgb(109_141_255_/_18%)] bg-[linear-gradient(145deg,rgb(109_141_255_/_9%),rgb(155_124_255_/_5%))] p-3">
         <div className="flex items-center gap-2 text-xs font-semibold">
           <GraduationCap size={15} className="text-[var(--blue-bright)]" />{' '}
-          Phase 26 workspace
+          Phase 27 workspace
         </div>
         <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">
           Your saved SQL, history, lessons, and challenge progress are private to your account.
