@@ -22,6 +22,7 @@ import {
   FlaskConical,
   HardDrive,
   Lightbulb,
+  MessageSquareText,
   Play,
   RotateCcw,
   ShieldCheck,
@@ -30,6 +31,7 @@ import {
   Target,
   TimerReset,
   Trophy,
+  Trash2,
   Undo2,
   WandSparkles,
   X,
@@ -38,12 +40,14 @@ import {
 import {
   askEditableMentor,
   clearChallengeProgressCloud,
+  clearMentorConversation,
   fixWriteQuery,
   getChallengeProgressCloud,
+  getMentorConversation,
   syncChallengeProgressCloud,
   type ChallengeProgressItem,
   type FixResponse,
-  type MentorAnswerResponse,
+  type MentorConversationItem,
   type SchemaResponse,
 } from '../services/api';
 import {
@@ -1590,7 +1594,11 @@ LIMIT 100;`;
 export function WriteLabContextPanel() {
   const [mentorQuestion, setMentorQuestion] = useState('');
   const [mentorAnswer, setMentorAnswer] =
-    useState<MentorAnswerResponse | null>(null);
+    useState<MentorConversationItem | null>(null);
+  const [mentorHistory, setMentorHistory] = useState<
+    MentorConversationItem[]
+  >([]);
+  const [mentorHistoryLoading, setMentorHistoryLoading] = useState(true);
   const [mentorLoading, setMentorLoading] = useState(false);
   const [mentorError, setMentorError] = useState('');
   const [mentorCopied, setMentorCopied] = useState(false);
@@ -1621,6 +1629,23 @@ export function WriteLabContextPanel() {
       window.removeEventListener('write-lab-context', receiveContext);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void getMentorConversation()
+      .then((items) => {
+        if (cancelled) return;
+        setMentorHistory(items);
+        setMentorAnswer(items.at(-1) ?? null);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setMentorHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const askMentor = async () => {
     const question = mentorQuestion.trim();
     if (!question || mentorLoading) return;
@@ -1630,14 +1655,19 @@ export function WriteLabContextPanel() {
     setMentorAnswer(null);
     try {
       const context = mentorContextRef.current;
-      setMentorAnswer(
-        await askEditableMentor(
-          question,
-          context.currentSql,
-          context.schema,
-          context.databaseError,
+      const nextAnswer = await askEditableMentor(
+        question,
+        context.currentSql,
+        context.schema,
+        context.databaseError,
+      );
+      setMentorAnswer(nextAnswer);
+      setMentorHistory((current) =>
+        [...current.filter((item) => item.id !== nextAnswer.id), nextAnswer].slice(
+          -20,
         ),
       );
+      setMentorQuestion('');
     } catch (caught) {
       setMentorError(
         caught instanceof Error
@@ -1646,6 +1676,23 @@ export function WriteLabContextPanel() {
       );
     } finally {
       setMentorLoading(false);
+    }
+  };
+
+  const clearMentorHistory = async () => {
+    if (!mentorHistory.length) return;
+    if (!window.confirm('Clear your saved AI Mentor conversation?')) return;
+    try {
+      await clearMentorConversation();
+      setMentorHistory([]);
+      setMentorAnswer(null);
+      setMentorError('');
+    } catch (caught) {
+      setMentorError(
+        caught instanceof Error
+          ? caught.message
+          : 'The mentor conversation could not be cleared.',
+      );
     }
   };
 
@@ -1786,7 +1833,9 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Editable Playground</p>
-          <p className="text-xs text-[var(--green)]">Phase 25 · AI ready</p>
+          <p className="text-xs text-[var(--green)]">
+            Phase 26 · conversation ready
+          </p>
         </div>
       </div>
       <section className="mt-3 overflow-hidden rounded-xl border border-[color:rgb(155_124_255_/_32%)] bg-[linear-gradient(145deg,rgb(155_124_255_/_9%),rgb(109_141_255_/_4%))]">
@@ -1872,6 +1921,54 @@ export function WriteLabContextPanel() {
           </div>
         </div>
 
+        {mentorHistoryLoading ? (
+          <div className="flex items-center gap-2 border-b border-[color:rgb(155_124_255_/_16%)] px-4 py-3 text-xs text-[var(--muted)]">
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--border-bright)] border-t-[#b9a5ff]" />
+            Loading your mentor conversation…
+          </div>
+        ) : mentorHistory.length ? (
+          <div className="border-b border-[color:rgb(155_124_255_/_16%)] p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-bright)]">
+                <MessageSquareText size={14} className="text-[#b9a5ff]" />
+                Recent conversation
+              </p>
+              <button
+                type="button"
+                onClick={() => void clearMentorHistory()}
+                className="flex items-center gap-1 text-xs font-semibold text-[var(--muted)] hover:text-[var(--red)]"
+              >
+                <Trash2 size={12} /> Clear
+              </button>
+            </div>
+            <div className="mt-2 space-y-1.5">
+              {mentorHistory
+                .slice(-6)
+                .reverse()
+                .map((item) => {
+                  const selected =
+                    mentorAnswer?.id === item.id &&
+                    mentorAnswer?.created_at === item.created_at;
+                  return (
+                    <button
+                      key={`${item.id ?? 'pending'}-${item.created_at}`}
+                      type="button"
+                      onClick={() => setMentorAnswer(item)}
+                      className={`w-full rounded-lg border px-3 py-2 text-left transition ${selected ? 'border-[color:rgb(155_124_255_/_42%)] bg-[color:rgb(155_124_255_/_10%)]' : 'border-[var(--border)] bg-[#0b1018] hover:border-[var(--border-bright)]'}`}
+                    >
+                      <span className="block truncate text-sm font-semibold text-[var(--text)]">
+                        {item.question}
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">
+                        {item.answer}
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        ) : null}
+
         {mentorLoading ? (
           <div className="flex items-center gap-3 p-4 text-sm text-[var(--muted-bright)]">
             <Sparkles size={16} className="animate-pulse text-[#b9a5ff]" />
@@ -1895,6 +1992,9 @@ export function WriteLabContextPanel() {
               <span className="rounded-full border border-[var(--border)] px-2 py-1 text-xs text-[var(--muted)]">
                 {mentorAnswer.source === 'groq' ? 'AI response' : 'Built-in tutor'}
               </span>
+            </div>
+            <div className="ml-5 rounded-xl rounded-tr-sm border border-[color:rgb(109_141_255_/_24%)] bg-[color:rgb(109_141_255_/_9%)] px-3 py-2 text-sm leading-5 text-[var(--text)]">
+              {mentorAnswer.question}
             </div>
             <p className="text-sm leading-6 text-[var(--muted-bright)]">
               {mentorAnswer.answer}
