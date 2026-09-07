@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 24 adds ChatGPT sign-in and account-isolated history, saved queries, lesson completion, and challenge progress so students can safely share one deployment. The editable ER diagram remains actionable and refreshes from the real browser database after table and relationship changes. The two-mode SQL Playground can query the protected CollegeDB or switch to an editable, locally recoverable copy for DDL, DML, and transactions. It also includes challenge mastery insights, cloud-synced progress, progressive coaching, a six-step graded path, schema-aware mentor repairs, SQLite file import, adaptive curriculum, execution plans, and persistent learning tools.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 25 adds a contextual AI doubt assistant to the editable workspace, using each student's current SQL, schema, and latest SQLite error to explain what to do next and offer review-before-run examples. ChatGPT sign-in and account-isolated history, saved queries, lesson completion, and challenge progress let students safely share one deployment. The editable ER diagram remains actionable and refreshes from the real browser database after table and relationship changes. The two-mode SQL Playground can query the protected CollegeDB or switch to an editable, locally recoverable copy for DDL, DML, and transactions. It also includes challenge mastery insights, cloud-synced progress, progressive coaching, a six-step graded path, schema-aware mentor repairs, SQLite file import, adaptive curriculum, execution plans, and persistent learning tools.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -22,6 +22,7 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Student identity:** ChatGPT sign-in with server-enforced ownership for every persisted learning record
 - **Two-mode SQL Playground:** query the protected CollegeDB or switch in place to a browser-isolated editable copy for tables, rows, schema changes, and transactions
 - **Editable Playground:** SQLite seeded with Department, Teacher, Course, Student, and Enrollment, plus multi-statement execution, `.db`/`.sqlite` import, reset, recovery, and export
+- **Editable AI Mentor:** Ask free-form DBMS doubts in the right panel and receive schema-aware guidance, next steps, cautions, and optional SQL that never runs without approval
 - **Challenge grader:** six guided SQL tasks evaluated against a fresh seed without changing the learner's editable database
 - **Challenge progress:** D1-backed attempt and completion sync with automatic device merging, offline fallback, progress percentage, and reset controls
 - **Mastery insights:** challenge accuracy, attempt totals, first-try wins, personalized retry recommendations, and three milestone badges
@@ -154,3 +155,4 @@ npm run build
 21. **Completed — Phase 22:** actionable editable ER entities with selected-table metadata, key badges, and one-click safe query loading.
 22. **Completed — Phase 23:** searchable and filterable query history, searchable saved SQL with copy actions, and direct table queries from Schema Explorer.
 23. **Completed — Phase 24:** ChatGPT sign-in, student identity in the workspace, and server-enforced isolation for history, saved SQL, lesson progress, and challenge progress.
+24. **Completed — Phase 25:** contextual AI doubt assistance in EditableDB with current-script, current-schema, and latest-error awareness plus review-before-run SQL examples.

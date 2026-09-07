@@ -6,6 +6,7 @@ import {
   Award,
   AlertTriangle,
   ArrowRight,
+  Bot,
   Box,
   Check,
   CheckCircle2,
@@ -13,6 +14,7 @@ import {
   Cloud,
   CloudOff,
   CodeXml,
+  CornerDownLeft,
   Download,
   Eye,
   FileCode2,
@@ -23,6 +25,7 @@ import {
   Play,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
   Table2,
   Target,
   TimerReset,
@@ -33,12 +36,14 @@ import {
 } from 'lucide-react';
 
 import {
+  askEditableMentor,
   clearChallengeProgressCloud,
   fixWriteQuery,
   getChallengeProgressCloud,
   syncChallengeProgressCloud,
   type ChallengeProgressItem,
   type FixResponse,
+  type MentorAnswerResponse,
   type SchemaResponse,
 } from '../services/api';
 import {
@@ -95,6 +100,12 @@ type PendingRequest = {
   timer: ReturnType<typeof setTimeout>;
 };
 type SaveState = 'loading' | 'saving' | 'saved' | 'draft' | 'unavailable';
+type WriteLabMentorContext = {
+  currentSql: string;
+  schema: string;
+  databaseError: string;
+  databaseName: string;
+};
 
 const STARTER_SCRIPT = `-- This database is isolated from CollegeDB.
 CREATE TABLE Project (
@@ -574,6 +585,50 @@ export function WriteLab() {
     return () =>
       window.removeEventListener('write-lab-challenge', useChallenge);
   }, []);
+
+  useEffect(() => {
+    const shareMentorContext = () => {
+      window.dispatchEvent(
+        new CustomEvent<WriteLabMentorContext>('write-lab-context', {
+          detail: {
+            currentSql: sql,
+            schema: schema
+              .map((item) => item.sql)
+              .filter((value): value is string => Boolean(value))
+              .join('\n\n'),
+            databaseError: error,
+            databaseName,
+          },
+        }),
+      );
+    };
+    const applyMentorSql = (event: Event) => {
+      const nextSql = (event as CustomEvent<string>).detail?.trim();
+      if (!nextSql) return;
+      setSql(nextSql);
+      setGradeResult(null);
+      setSolutionVisible(false);
+      setResults([]);
+      setError('');
+      setFix(null);
+      setFixError('');
+      setMessage(
+        'AI Mentor example added to the editor. Review it, then run it when you are ready.',
+      );
+      setActiveTab('output');
+    };
+
+    window.addEventListener('write-lab-context-request', shareMentorContext);
+    window.addEventListener('write-lab-mentor-apply', applyMentorSql);
+    shareMentorContext();
+    return () => {
+      window.removeEventListener(
+        'write-lab-context-request',
+        shareMentorContext,
+      );
+      window.removeEventListener('write-lab-mentor-apply', applyMentorSql);
+    };
+  }, [databaseName, error, schema, sql]);
 
   const run = async (script = sql) => {
     if (!script.trim() || running) return;
@@ -1533,6 +1588,18 @@ LIMIT 100;`;
 }
 
 export function WriteLabContextPanel() {
+  const [mentorQuestion, setMentorQuestion] = useState('');
+  const [mentorAnswer, setMentorAnswer] =
+    useState<MentorAnswerResponse | null>(null);
+  const [mentorLoading, setMentorLoading] = useState(false);
+  const [mentorError, setMentorError] = useState('');
+  const [mentorCopied, setMentorCopied] = useState(false);
+  const mentorContextRef = useRef<WriteLabMentorContext>({
+    currentSql: '',
+    schema: '',
+    databaseError: '',
+    databaseName: 'EditableDB',
+  });
   const [challengeProgress, setChallengeProgress] = useState<ChallengeProgress>(
     {},
   );
@@ -1542,6 +1609,61 @@ export function WriteLabContextPanel() {
   const [syncState, setSyncState] = useState<
     'loading' | 'syncing' | 'synced' | 'local'
   >('loading');
+
+  useEffect(() => {
+    const receiveContext = (event: Event) => {
+      const context = (event as CustomEvent<WriteLabMentorContext>).detail;
+      if (context) mentorContextRef.current = context;
+    };
+    window.addEventListener('write-lab-context', receiveContext);
+    window.dispatchEvent(new Event('write-lab-context-request'));
+    return () =>
+      window.removeEventListener('write-lab-context', receiveContext);
+  }, []);
+
+  const askMentor = async () => {
+    const question = mentorQuestion.trim();
+    if (!question || mentorLoading) return;
+    window.dispatchEvent(new Event('write-lab-context-request'));
+    setMentorLoading(true);
+    setMentorError('');
+    setMentorAnswer(null);
+    try {
+      const context = mentorContextRef.current;
+      setMentorAnswer(
+        await askEditableMentor(
+          question,
+          context.currentSql,
+          context.schema,
+          context.databaseError,
+        ),
+      );
+    } catch (caught) {
+      setMentorError(
+        caught instanceof Error
+          ? caught.message
+          : 'The AI Mentor could not answer that doubt.',
+      );
+    } finally {
+      setMentorLoading(false);
+    }
+  };
+
+  const applyMentorExample = () => {
+    if (!mentorAnswer?.example_sql) return;
+    window.dispatchEvent(
+      new CustomEvent('write-lab-mentor-apply', {
+        detail: mentorAnswer.example_sql,
+      }),
+    );
+  };
+
+  const copyMentorExample = async () => {
+    if (!mentorAnswer?.example_sql) return;
+    await navigator.clipboard.writeText(mentorAnswer.example_sql);
+    setMentorCopied(true);
+    window.setTimeout(() => setMentorCopied(false), 1_500);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -1664,9 +1786,182 @@ export function WriteLabContextPanel() {
         </div>
         <div>
           <p className="text-sm font-bold">Editable Playground</p>
-          <p className="text-xs text-[var(--green)]">Phase 22 · ready</p>
+          <p className="text-xs text-[var(--green)]">Phase 25 · AI ready</p>
         </div>
       </div>
+      <section className="mt-3 overflow-hidden rounded-xl border border-[color:rgb(155_124_255_/_32%)] bg-[linear-gradient(145deg,rgb(155_124_255_/_9%),rgb(109_141_255_/_4%))]">
+        <div className="border-b border-[color:rgb(155_124_255_/_20%)] p-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:rgb(155_124_255_/_16%)] text-[#b9a5ff]">
+              <Bot size={17} />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold">Ask AI Mentor</h2>
+              <p className="text-xs text-[var(--muted)]">
+                Uses your SQL, schema, and latest error
+              </p>
+            </div>
+            <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-[var(--green)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--green)]" />
+              Ready
+            </span>
+          </div>
+          <form
+            className="mt-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void askMentor();
+            }}
+          >
+            <label
+              htmlFor="editable-mentor-question"
+              className="text-xs font-semibold text-[var(--muted-bright)]"
+            >
+              What are you stuck on?
+            </label>
+            <div className="mt-2 rounded-xl border border-[var(--border)] bg-[#090d14] p-2 focus-within:border-[#9b7cff]">
+              <textarea
+                id="editable-mentor-question"
+                value={mentorQuestion}
+                onChange={(event) => setMentorQuestion(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    void askMentor();
+                  }
+                }}
+                rows={3}
+                maxLength={1500}
+                placeholder="Ask how to create a table, understand an error, write a JOIN, or improve your current script…"
+                className="w-full resize-none bg-transparent px-1 py-1 text-sm leading-5 text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
+              />
+              <div className="mt-1 flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2">
+                <span className="text-xs text-[var(--muted)]">
+                  Ctrl + Enter to ask
+                </span>
+                <button
+                  type="submit"
+                  disabled={!mentorQuestion.trim() || mentorLoading}
+                  className="flex items-center gap-1.5 rounded-lg bg-[linear-gradient(135deg,#806dff,#5d8dff)] px-3 py-2 text-xs font-bold text-white shadow-[0_5px_16px_rgb(128_109_255_/_20%)] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {mentorLoading ? (
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/35 border-t-white" />
+                  ) : (
+                    <CornerDownLeft size={13} />
+                  )}
+                  {mentorLoading ? 'Thinking…' : 'Ask mentor'}
+                </button>
+              </div>
+            </div>
+          </form>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {[
+              'Explain my error',
+              'How should I JOIN these tables?',
+              'How do I insert data safely?',
+            ].map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => setMentorQuestion(prompt)}
+                className="rounded-full border border-[var(--border)] bg-[#0b1018] px-2.5 py-1.5 text-xs text-[var(--muted-bright)] hover:border-[color:rgb(155_124_255_/_45%)] hover:text-[var(--text)]"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {mentorLoading ? (
+          <div className="flex items-center gap-3 p-4 text-sm text-[var(--muted-bright)]">
+            <Sparkles size={16} className="animate-pulse text-[#b9a5ff]" />
+            Studying your current workspace…
+          </div>
+        ) : null}
+
+        {mentorError ? (
+          <div className="m-4 flex gap-2 rounded-lg border border-[color:rgb(255_107_135_/_28%)] bg-[color:rgb(255_107_135_/_7%)] p-3 text-sm leading-5 text-[var(--red)]">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            {mentorError}
+          </div>
+        ) : null}
+
+        {mentorAnswer ? (
+          <div className="space-y-3 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#b9a5ff]">
+                <Sparkles size={14} /> Mentor guidance
+              </p>
+              <span className="rounded-full border border-[var(--border)] px-2 py-1 text-xs text-[var(--muted)]">
+                {mentorAnswer.source === 'groq' ? 'AI response' : 'Built-in tutor'}
+              </span>
+            </div>
+            <p className="text-sm leading-6 text-[var(--muted-bright)]">
+              {mentorAnswer.answer}
+            </p>
+            {mentorAnswer.steps.length ? (
+              <ol className="space-y-2">
+                {mentorAnswer.steps.map((step, index) => (
+                  <li
+                    key={`${index}-${step}`}
+                    className="flex items-start gap-2.5 text-sm leading-5 text-[var(--muted-bright)]"
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color:rgb(155_124_255_/_15%)] font-mono text-xs text-[#b9a5ff]">
+                      {index + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+            {mentorAnswer.concepts.length ? (
+              <div className="flex flex-wrap gap-1.5">
+                {mentorAnswer.concepts.map((concept) => (
+                  <span
+                    key={concept}
+                    className="rounded-md border border-[color:rgb(109_141_255_/_22%)] bg-[color:rgb(109_141_255_/_8%)] px-2 py-1 font-mono text-xs text-[var(--blue-bright)]"
+                  >
+                    {concept}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {mentorAnswer.example_sql ? (
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                  Example SQL
+                </p>
+                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[#070b11] p-3 font-mono text-xs leading-5 text-[#d5dded]">
+                  {mentorAnswer.example_sql}
+                </pre>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={applyMentorExample}
+                    className="flex items-center gap-1.5 rounded-lg bg-[var(--blue)] px-3 py-2 text-xs font-bold text-white hover:brightness-110"
+                  >
+                    <Check size={13} /> Use in editor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void copyMentorExample()}
+                    className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--muted-bright)] hover:bg-[var(--surface-muted)]"
+                  >
+                    <Clipboard size={13} />
+                    {mentorCopied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {mentorAnswer.caution ? (
+              <div className="flex gap-2 rounded-lg border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_6%)] p-3 text-xs leading-5 text-[#e4c98e]">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                {mentorAnswer.caution}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
       <div className="mt-3 rounded-xl border border-[color:rgb(246_199_111_/_25%)] bg-[color:rgb(246_199_111_/_4%)] p-4">
         <div className="flex items-center gap-2">
           <Award size={17} className="text-[#f6c76f]" />

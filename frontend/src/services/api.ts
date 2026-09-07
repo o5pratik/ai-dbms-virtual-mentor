@@ -28,6 +28,14 @@ export type FixResponse = {
   reason: string;
   source: TutorSource;
 };
+export type MentorAnswerResponse = {
+  answer: string;
+  steps: string[];
+  concepts: string[];
+  example_sql: string;
+  caution: string;
+  source: TutorSource;
+};
 
 export type SchemaColumn = {
   name: string;
@@ -205,6 +213,20 @@ export function fixWriteQuery(
     database_error: databaseError,
     mode: 'write-lab',
     schema,
+  });
+}
+
+export function askEditableMentor(
+  question: string,
+  currentSql = '',
+  schema = '',
+  databaseError = '',
+) {
+  return postTutor<MentorAnswerResponse>('/api/mentor-chat', {
+    question,
+    current_sql: currentSql,
+    schema,
+    database_error: databaseError,
   });
 }
 
