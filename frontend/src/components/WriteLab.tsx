@@ -66,13 +66,6 @@ import {
   savePracticeCheckpoint,
   savePracticeSnapshot,
 } from '../services/practice-storage';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { ErDiagram } from './ErDiagram';
 
 type SqlValue = number | string | Uint8Array | null;
@@ -1058,51 +1051,51 @@ LIMIT 100;`;
               {grading ? 'Checking…' : 'Check answer'}
             </button>
           ) : null}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]"
+          <details className="group relative">
+            <summary
+              className="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-2 text-sm font-medium text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]"
               aria-label="More database actions"
             >
               <MoreHorizontal size={15} />
               More
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="w-56 border border-[var(--border)] bg-[var(--surface-raised)] p-1.5 text-[var(--text)] shadow-2xl"
-            >
-              <DropdownMenuItem
+            </summary>
+            <div className="absolute left-0 top-full z-30 mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-1.5 text-[var(--text)] shadow-2xl">
+              <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={running}
-                className="gap-2 px-2.5 py-2 text-sm focus:bg-[var(--surface-muted)]"
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <FileUp size={14} /> Open SQLite file
-              </DropdownMenuItem>
-              <DropdownMenuItem
+              </button>
+              <button
+                type="button"
                 onClick={() => void undoLastRun()}
                 disabled={!ready || running || !undoAvailable}
                 title={undoLabel || 'Available after your first run'}
-                className="gap-2 px-2.5 py-2 text-sm focus:bg-[var(--surface-muted)]"
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Undo2 size={14} /> {undoing ? 'Restoring…' : 'Undo last run'}
-              </DropdownMenuItem>
-              <DropdownMenuItem
+              </button>
+              <button
+                type="button"
                 onClick={exportDatabase}
                 disabled={!ready || running}
-                className="gap-2 px-2.5 py-2 text-sm focus:bg-[var(--surface-muted)]"
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={14} /> Export database
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-[var(--border)]" />
-              <DropdownMenuItem
+              </button>
+              <div className="my-1 h-px bg-[var(--border)]" />
+              <button
+                type="button"
                 onClick={reset}
                 disabled={running}
-                variant="destructive"
-                className="gap-2 px-2.5 py-2 text-sm focus:bg-[color:rgb(255_107_135_/_10%)]"
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-[var(--red)] hover:bg-[color:rgb(255_107_135_/_10%)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <RotateCcw size={14} /> Reset database
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </button>
+            </div>
+          </details>
         </div>
         <div className="hidden items-center sm:flex">
           <span
