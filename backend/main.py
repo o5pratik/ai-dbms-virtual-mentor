@@ -16,7 +16,7 @@ from .routes.suggest import router as suggest_router
 
 
 app = FastAPI(
-    title="AI DBMS Virtual Mentor API",
+    title="ApexDB Mentor API",
     description="Controlled SQLite query execution for the DBMS learning workspace.",
     version="0.1.0",
 )

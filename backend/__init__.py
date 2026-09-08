@@ -1,1 +1,1 @@
-"""Backend package for AI DBMS Virtual Mentor."""
+"""Backend package for ApexDB Mentor."""

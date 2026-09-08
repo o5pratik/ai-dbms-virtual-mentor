@@ -55,13 +55,13 @@ export function MentorPanel({ view, instruction, onInstructionChange, onAsk, onA
       <div className="flex items-center justify-between border-b border-[var(--border)] p-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:rgb(155_124_255_/_13%)] text-[#b9a5ff]"><Bot size={17} /></div>
-          <div><p className="text-xs font-bold">AI Mentor</p><p className="text-[10px] text-[var(--green)]">Phase 2 · ready</p></div>
+          <div><p className="text-xs font-bold">Apex AI</p><p className="text-[10px] text-[var(--green)]">Ready</p></div>
         </div>
         {source ? <SourceBadge source={source} /> : <span className="h-2 w-2 rounded-full bg-[var(--green)] shadow-[0_0_8px_var(--green)]" />}
       </div>
 
       <div className="border-b border-[var(--border)] p-4">
-        <label htmlFor="mentor-request" className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">Ask the DBMS Mentor</label>
+        <label htmlFor="mentor-request" className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">Ask Apex AI</label>
         <div className="mt-2 flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[#0b1019] px-3 py-2 focus-within:border-[var(--blue)]">
           <input
             id="mentor-request"

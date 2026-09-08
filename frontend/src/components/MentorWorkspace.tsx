@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { AlignLeft, Database, Eraser, Lightbulb, LogOut, PencilLine, Play, Save as SaveIcon, Sparkles, WandSparkles, Workflow } from 'lucide-react';
+import Image from 'next/image';
 
 import { analyzeQuery, analyzeSchema, clearHistory, deleteSavedQuery, executeQuery, explainQuery, fixQuery, getHistory, getProgress, getQueryPlan, getSavedQueries, getSchema, saveQuery, setTopicProgress, suggestQuery, type HistoryItem, type ProgressItem, type QueryAnalysis, type QueryPlanResponse, type QueryResponse, type SavedQueryItem, type SchemaResponse } from '../services/api';
 import { formatSql } from '../services/sql-intelligence';
@@ -276,12 +277,12 @@ export function MentorWorkspace({ user }: { user: { email: string; name: string 
       <header className="app-header panel-shadow flex items-center justify-between border-b border-[var(--border)] bg-[color:rgb(14_19_29_/_94%)] px-4 backdrop-blur-xl">
         <div className="flex min-w-0 items-center gap-4">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,var(--blue),var(--violet))] shadow-[0_6px_18px_rgb(109_141_255_/_25%)]">
-              <span className="font-mono text-[12px] font-black tracking-[-0.18em] text-white">{'{}'}</span>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[11px] border border-[color:rgb(109_141_255_/_24%)] bg-[#080d18] shadow-[0_6px_18px_rgb(109_141_255_/_18%)]">
+              <Image src="/apexdb-logo.png" alt="" width={36} height={36} unoptimized className="h-full w-full object-contain p-0.5" />
             </div>
             <div className="min-w-0 leading-tight">
-              <p className="truncate text-xs font-bold tracking-tight">AI DBMS Virtual Mentor</p>
-              <p className="text-[10px] text-[var(--muted)]">Learn SQL by doing</p>
+              <p className="truncate text-xs font-bold tracking-tight">ApexDB Mentor</p>
+              <p className="text-[10px] text-[var(--muted)]">Team Apex · Learn SQL by doing</p>
             </div>
           </div>
           <div className="hidden h-5 w-px bg-[var(--border)] sm:block" />

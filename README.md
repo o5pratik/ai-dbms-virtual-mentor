@@ -1,6 +1,6 @@
-# AI DBMS Virtual Mentor
+# ApexDB Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 29 opens directly in a clean, simplified editable SQL workspace where students can write programs, run them, inspect output, and see only their program's tables in the ER diagram. Secondary navigation, database actions, challenges, and starter examples stay available without crowding the editor. Phase 27 added contextual next-question guidance to every AI Mentor answer, persisted with each account-isolated conversation. ChatGPT sign-in and account-isolated query history, saved SQL, lesson completion, and challenge progress let students safely share one deployment. The protected CollegeDB remains available as an optional read-only reference.
+ApexDB Mentor is Team Apex's modern SQL learning workspace. Phase 29 opens directly in a clean, simplified editable SQL workspace where students can write programs, run them, inspect output, and see only their program's tables in the ER diagram. Secondary navigation, database actions, challenges, and starter examples stay available without crowding the editor. Phase 27 added contextual next-question guidance to every AI Mentor answer, persisted with each account-isolated conversation. ChatGPT sign-in and account-isolated query history, saved SQL, lesson completion, and challenge progress let students safely share one deployment. The protected CollegeDB remains available as an optional read-only reference.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 

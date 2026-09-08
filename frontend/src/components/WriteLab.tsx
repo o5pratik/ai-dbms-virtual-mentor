@@ -1851,7 +1851,7 @@ export function WriteLabContextPanel() {
               <Bot size={17} />
             </div>
             <div>
-              <h2 className="text-sm font-bold">Ask AI Mentor</h2>
+              <h2 className="text-sm font-bold">Ask Apex AI</h2>
               <p className="text-xs text-[var(--muted)]">
                 Uses your SQL, schema, and latest error
               </p>
