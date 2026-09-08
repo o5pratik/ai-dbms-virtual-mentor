@@ -1,6 +1,6 @@
 # AI DBMS Virtual Mentor
 
-AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 28 opens directly in a simplified editable SQL workspace where students can write programs, run them, inspect output, and see table changes in the ER diagram. Secondary navigation, database actions, challenges, and starter examples stay available without crowding the editor. Phase 27 added contextual next-question guidance to every AI Mentor answer, persisted with each account-isolated conversation. ChatGPT sign-in and account-isolated query history, saved SQL, lesson completion, and challenge progress let students safely share one deployment. The protected CollegeDB remains available as an optional read-only reference.
+AI DBMS Virtual Mentor is a modern SQL learning workspace. Phase 29 opens directly in a clean, simplified editable SQL workspace where students can write programs, run them, inspect output, and see only their program's tables in the ER diagram. Secondary navigation, database actions, challenges, and starter examples stay available without crowding the editor. Phase 27 added contextual next-question guidance to every AI Mentor answer, persisted with each account-isolated conversation. ChatGPT sign-in and account-isolated query history, saved SQL, lesson completion, and challenge progress let students safely share one deployment. The protected CollegeDB remains available as an optional read-only reference.
 
 The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
 
@@ -21,7 +21,7 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Productivity:** D1-backed history, saved SQL, learning progress, practice analytics, and CSV/JSON export
 - **Student identity:** ChatGPT sign-in with server-enforced ownership for every persisted learning record
 - **Two-mode SQL Playground:** query the protected CollegeDB or switch in place to a browser-isolated editable copy for tables, rows, schema changes, and transactions
-- **Editable Playground:** SQLite seeded with Department, Teacher, Course, Student, and Enrollment, plus multi-statement execution, `.db`/`.sqlite` import, reset, recovery, and export
+- **Editable Playground:** a clean SQLite workspace where each program creates its own schema, with multi-statement execution, `.db`/`.sqlite` import, reset, recovery, export, and a matching live ER diagram
 - **Editable AI Mentor:** Ask free-form DBMS doubts in the right panel and receive schema-aware guidance, next steps, cautions, and optional SQL that never runs without approval
 - **Mentor conversations:** Ask follow-up questions, reopen recent answers after refreshing, and clear a conversation without affecting another student's history
 - **Guided follow-ups:** Continue from every mentor answer with three contextual next questions that remain attached to saved conversation history
@@ -123,7 +123,7 @@ Each response includes a `source` field (`groq` or `built-in`) so the interface 
 
 Local CollegeDB is created and seeded automatically when FastAPI starts. The hosted D1 database is initialized through `drizzle/0000_college_schema.sql` during deployment. Both contain `Student`, `Course`, `Teacher`, `Department`, and `Enrollment`.
 
-SQL Workspace starts in **Editable SQL** mode using a separate `EditableDB` inside a Web Worker, seeded with the five CollegeDB learning tables. It can open SQLite files up to 20 MB and run SQLite `CREATE`, `ALTER`, `DROP`, `INSERT`, `UPDATE`, `DELETE`, transactions, PRAGMA, selected statements, and multi-statement scripts without damaging the master CollegeDB. Successful table changes open the refreshed ER diagram automatically; query results remain in Output. Local recovery and `.sqlite` export preserve learner work. The protected CollegeDB remains available from the mode switch for read-only reference queries. Vendor-specific MySQL, PostgreSQL, Oracle, or SQL Server procedures still require their matching database engine.
+SQL Workspace starts in **Editable SQL** mode using a clean `ProgramDB` inside a Web Worker. Only tables created or imported by the learner appear in its live ER diagram, so the diagram always represents the current program. It can open SQLite files up to 20 MB and run SQLite `CREATE`, `ALTER`, `DROP`, `INSERT`, `UPDATE`, `DELETE`, transactions, PRAGMA, selected statements, and multi-statement scripts without damaging the master CollegeDB. Successful table changes open the refreshed ER diagram automatically; query results remain in Output. Local recovery and `.sqlite` export preserve learner work. The protected CollegeDB remains available from the mode switch for read-only reference queries and powers an isolated copy used only by the challenge grader. Vendor-specific MySQL, PostgreSQL, Oracle, or SQL Server procedures still require their matching database engine.
 
 ## Tests and build
 
@@ -152,12 +152,13 @@ npm run build
 16. **Completed — Phase 17:** progressive retry hints, backward-compatible failure tracking, and reviewed solution reveal after three failed checks.
 17. **Completed — Phase 18:** cloud-synced challenge attempts and completions with automatic local merging and an offline device fallback.
 18. **Completed — Phase 19:** challenge mastery insights, personalized retry recommendations, and milestone achievement badges.
-19. **Completed — Phase 20:** in-place Playground mode switching between protected CollegeDB queries and a full editable CollegeDB copy with DDL, DML, recovery, reset, import, and export.
+19. **Completed — Phase 20:** in-place Playground mode switching between protected CollegeDB queries and an editable SQLite workspace with DDL, DML, recovery, reset, import, and export.
 20. **Completed — Phase 21:** live ER diagrams for editable schemas, generated from current SQLite metadata with primary keys, foreign keys, row counts, and relationship links.
 21. **Completed — Phase 22:** actionable editable ER entities with selected-table metadata, key badges, and one-click safe query loading.
 22. **Completed — Phase 23:** searchable and filterable query history, searchable saved SQL with copy actions, and direct table queries from Schema Explorer.
 23. **Completed — Phase 24:** ChatGPT sign-in, student identity in the workspace, and server-enforced isolation for history, saved SQL, lesson progress, and challenge progress.
-24. **Completed — Phase 25:** contextual AI doubt assistance in EditableDB with current-script, current-schema, and latest-error awareness plus review-before-run SQL examples.
+24. **Completed — Phase 25:** contextual AI doubt assistance in ProgramDB with current-script, current-schema, and latest-error awareness plus review-before-run SQL examples.
 25. **Completed — Phase 26:** persistent, account-isolated AI Mentor conversations with follow-up context, recent-history recovery, and clear-history controls.
 26. **Completed — Phase 27:** contextual next-question suggestions for every AI Mentor answer, including persistence with account-isolated conversation history.
 27. **Completed — Phase 28:** editable-first landing, simplified navigation and actions, prioritized Output and ER Diagram, and automatic ER refresh after table changes.
+28. **Completed — Phase 29:** clean program-scoped SQLite workspace whose ER diagram contains only the learner's tables, while CollegeDB remains isolated for reference and challenge grading.
