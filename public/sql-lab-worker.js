@@ -132,11 +132,11 @@ const CHALLENGES = {
 const sqlPromise = initSqlJs({ locateFile: () => '/sql-wasm.wasm' });
 let databasePromise = null;
 
-async function createDatabase(bytes) {
+async function createDatabase(bytes, useCollegeSeed = false) {
   const SQL = await sqlPromise;
   const database = new SQL.Database(bytes ? new Uint8Array(bytes) : undefined);
-  if (bytes) database.run('PRAGMA foreign_keys = ON;');
-  else database.run(SEED_SQL);
+  database.run('PRAGMA foreign_keys = ON;');
+  if (!bytes && useCollegeSeed) database.run(SEED_SQL);
   return database;
 }
 
@@ -310,7 +310,7 @@ function readDiagram(database) {
   });
 
   return {
-    database: 'EditableDB',
+    database: 'ProgramDB',
     engine: 'SQLite (browser)',
     tables,
     relationships,
@@ -389,7 +389,7 @@ async function gradeChallenge(sql, challengeId) {
   const challenge = CHALLENGES[challengeId];
   if (!challenge) throw new Error('Choose a valid SQL challenge first.');
   const safeSql = validateChallengeSql(sql);
-  const database = await createDatabase();
+  const database = await createDatabase(undefined, true);
   try {
     database.run('PRAGMA query_only = ON;');
     let actualRaw;

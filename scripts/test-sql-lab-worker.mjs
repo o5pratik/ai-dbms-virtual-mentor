@@ -91,31 +91,24 @@ for (const [challengeId, sql] of challengeAnswers) {
   assert.equal(response.passed, true, `${challengeId} should pass.`);
 }
 
-const seededSchema = await request('schema');
-assert.equal(seededSchema.diagram.tables.length, 5);
-assert.equal(seededSchema.diagram.relationships.length, 5);
-for (const table of [
-  'Department',
-  'Teacher',
-  'Course',
-  'Student',
-  'Enrollment',
-]) {
-  assert.ok(
-    seededSchema.schema.some(
-      (item) => item.type === 'table' && item.name === table,
-    ),
-    `${table} should be available in the editable CollegeDB copy.`,
-  );
-}
+const emptySchema = await request('schema');
+assert.equal(emptySchema.diagram.database, 'ProgramDB');
+assert.equal(emptySchema.diagram.tables.length, 0);
+assert.equal(emptySchema.diagram.relationships.length, 0);
+assert.equal(emptySchema.schema.length, 0);
 
 const editableScript = await request('execute', {
   sql: `CREATE TABLE Employee (
           employee_id INTEGER PRIMARY KEY,
           name TEXT NOT NULL,
           salary REAL,
-          dept_id INTEGER REFERENCES Department(dept_id)
+          department_id INTEGER REFERENCES Department(department_id)
         );
+        CREATE TABLE Department (
+          department_id INTEGER PRIMARY KEY,
+          department_name TEXT NOT NULL
+        );
+        INSERT INTO Department VALUES (1, 'Engineering');
         INSERT INTO Employee VALUES (1, 'Rahul', 45000, 1);
         SELECT * FROM Employee;`,
 });
@@ -124,7 +117,7 @@ assert.deepEqual(Array.from(editableScript.results[0].columns), [
   'employee_id',
   'name',
   'salary',
-  'dept_id',
+  'department_id',
 ]);
 assert.deepEqual(Array.from(editableScript.results[0].values[0]), [
   1,
@@ -139,10 +132,10 @@ assert.ok(employeeDiagram, 'The live ER diagram should include new tables.');
 assert.equal(employeeDiagram.row_count, 1);
 assert.equal(employeeDiagram.columns[0].primary_key, true);
 const employeeDepartmentKey = employeeDiagram.columns.find(
-  (column) => column.name === 'dept_id',
+  (column) => column.name === 'department_id',
 ).foreign_key;
 assert.equal(employeeDepartmentKey.table, 'Department');
-assert.equal(employeeDepartmentKey.column, 'dept_id');
+assert.equal(employeeDepartmentKey.column, 'department_id');
 assert.ok(
   editableScript.diagram.relationships.some(
     (relationship) =>
@@ -181,11 +174,18 @@ assert.equal(mutatingAnswer.ok, true);
 assert.equal(mutatingAnswer.passed, false);
 assert.match(mutatingAnswer.feedback, /read.?only|attempt to write/i);
 
-await request('execute', { sql: 'UPDATE Student SET marks = 0;' });
+await request('execute', {
+  sql: `CREATE TABLE Student (name TEXT, marks INTEGER);
+        INSERT INTO Student VALUES ('Not the challenge seed', 0);`,
+});
 const isolatedGrade = await request('grade', {
   challengeId: 'top-student',
   sql: challengeAnswers[2][1],
 });
 assert.equal(isolatedGrade.passed, true, 'Grading must use a fresh seed.');
+
+const resetDatabase = await request('reset');
+assert.equal(resetDatabase.schema.length, 0);
+assert.equal(resetDatabase.diagram.tables.length, 0);
 
 console.log('SQL Lab worker challenge grading passed.');

@@ -109,37 +109,47 @@ type WriteLabMentorContext = {
   databaseName: string;
 };
 
-const STARTER_SCRIPT = `-- This database is isolated from CollegeDB.
-CREATE TABLE Project (
-  project_id INTEGER PRIMARY KEY,
-  title TEXT NOT NULL,
-  budget REAL DEFAULT 0,
-  student_id INTEGER,
-  FOREIGN KEY (student_id) REFERENCES Student(student_id)
+const STARTER_SCRIPT = `-- Create two related tables, insert data, and run the program.
+CREATE TABLE Department (
+  department_id INTEGER PRIMARY KEY,
+  department_name TEXT NOT NULL UNIQUE
 );
 
-INSERT INTO Project (title, budget, student_id)
-VALUES ('Campus Portal', 25000, 1),
-       ('IoT Attendance', 18000, 3);
+CREATE TABLE Employee (
+  employee_id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  salary REAL NOT NULL,
+  department_id INTEGER NOT NULL,
+  FOREIGN KEY (department_id) REFERENCES Department(department_id)
+);
 
-SELECT p.title, p.budget, s.name AS student
-FROM Project AS p
-JOIN Student AS s ON s.student_id = p.student_id
-ORDER BY p.budget DESC;`;
+INSERT INTO Department (department_id, department_name)
+VALUES (1, 'Engineering'),
+       (2, 'Design');
+
+INSERT INTO Employee (employee_id, name, salary, department_id)
+VALUES (1, 'Rahul', 45000, 1),
+       (2, 'Priya', 52000, 2),
+       (3, 'Aman', 48000, 1);
+
+SELECT e.name, e.salary, d.department_name
+FROM Employee AS e
+JOIN Department AS d ON d.department_id = e.department_id
+ORDER BY e.salary DESC;`;
 
 const EXAMPLES = [
   { label: 'Create + insert', sql: STARTER_SCRIPT },
   {
     label: 'Update rows',
-    sql: `UPDATE Student\nSET marks = marks + 3\nWHERE dept_id = 1;\n\nSELECT * FROM Student ORDER BY marks DESC;`,
+    sql: `UPDATE Employee\nSET salary = salary + 2500\nWHERE department_id = 1;\n\nSELECT * FROM Employee ORDER BY salary DESC;`,
   },
   {
     label: 'Transaction',
-    sql: `BEGIN;\nUPDATE Student SET marks = 100 WHERE student_id = 2;\nSELECT * FROM Student WHERE student_id = 2;\nROLLBACK;\nSELECT * FROM Student WHERE student_id = 2;`,
+    sql: `BEGIN;\nUPDATE Employee SET salary = 60000 WHERE employee_id = 2;\nSELECT * FROM Employee WHERE employee_id = 2;\nROLLBACK;\nSELECT * FROM Employee WHERE employee_id = 2;`,
   },
   {
     label: 'Index + plan',
-    sql: `CREATE INDEX IF NOT EXISTS idx_student_dept ON Student(dept_id);\nPRAGMA optimize;\nEXPLAIN QUERY PLAN\nSELECT * FROM Student WHERE dept_id = 1;`,
+    sql: `CREATE INDEX IF NOT EXISTS idx_employee_department ON Employee(department_id);\nPRAGMA optimize;\nEXPLAIN QUERY PLAN\nSELECT * FROM Employee WHERE department_id = 1;`,
   },
 ];
 
@@ -315,7 +325,7 @@ export function WriteLab() {
   >('output');
   const [ready, setReady] = useState(false);
   const [running, setRunning] = useState(false);
-  const [databaseName, setDatabaseName] = useState('EditableDB');
+  const [databaseName, setDatabaseName] = useState('ProgramDB');
   const [hasSelection, setHasSelection] = useState(false);
   const [fix, setFix] = useState<FixResponse | null>(null);
   const [fixing, setFixing] = useState(false);
@@ -501,10 +511,10 @@ export function WriteLab() {
           setSchema(response.schema ?? []);
           setDiagram(response.diagram ?? null);
           setMessage(
-            'EditableDB is ready with a safe copy of CollegeDB. Local recovery is enabled.',
+            'ProgramDB is blank and ready. Run the starter program to create its tables and matching ER diagram.',
           );
           setReady(true);
-          await persistDatabase(STARTER_SCRIPT, 'EditableDB');
+          await persistDatabase(STARTER_SCRIPT, 'ProgramDB');
         }
       } catch (caught) {
         if (!cancelled) {
@@ -717,7 +727,7 @@ export function WriteLab() {
         new CustomEvent('write-lab-progress', { detail: progress }),
       );
       setMessage(
-        `${passed ? 'Challenge passed' : 'Keep trying'} · ${(response.elapsedMs ?? 0).toFixed(1)} ms · EditableDB was not changed.`,
+        `${passed ? 'Challenge passed' : 'Keep trying'} · ${(response.elapsedMs ?? 0).toFixed(1)} ms · ProgramDB was not changed.`,
       );
     } catch (caught) {
       setError(
@@ -897,7 +907,7 @@ LIMIT 100;`;
   const reset = async () => {
     if (
       !window.confirm(
-        'Reset EditableDB and replace the saved local copy with a fresh CollegeDB copy?',
+        'Reset ProgramDB to a blank database and restore the starter SQL?',
       )
     )
       return;
@@ -912,12 +922,12 @@ LIMIT 100;`;
       setSchema(response.schema ?? []);
       setDiagram(response.diagram ?? null);
       setResults([]);
-      setDatabaseName('EditableDB');
+      setDatabaseName('ProgramDB');
       setSql(STARTER_SCRIPT);
       await clearPracticeSnapshot().catch(() => undefined);
-      await persistDatabase(STARTER_SCRIPT, 'EditableDB');
+      await persistDatabase(STARTER_SCRIPT, 'ProgramDB');
       setMessage(
-        'EditableDB was reset to fresh Department, Teacher, Course, Student, and Enrollment tables.',
+        'ProgramDB is blank again. Run the starter SQL to create its tables and ER diagram.',
       );
       setActiveTab('schema');
       setReady(true);
@@ -1613,7 +1623,7 @@ export function WriteLabContextPanel() {
     currentSql: '',
     schema: '',
     databaseError: '',
-    databaseName: 'EditableDB',
+    databaseName: 'ProgramDB',
   });
   const [challengeProgress, setChallengeProgress] = useState<ChallengeProgress>(
     {},

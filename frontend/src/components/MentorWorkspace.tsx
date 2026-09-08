@@ -287,7 +287,7 @@ export function MentorWorkspace({ user }: { user: { email: string; name: string 
           <div className="hidden h-5 w-px bg-[var(--border)] sm:block" />
           <div className="hidden items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-xs text-[var(--muted-bright)] sm:flex">
             <span className={`h-1.5 w-1.5 rounded-full ${activeView === 'write-lab' || (activeView === 'playground' && playgroundMode === 'edit') ? 'bg-[var(--green)]' : 'bg-[var(--blue)]'}`} />
-            {activeView === 'write-lab' || (activeView === 'playground' && playgroundMode === 'edit') ? 'EditableDB' : 'CollegeDB reference'}
+            {activeView === 'write-lab' || (activeView === 'playground' && playgroundMode === 'edit') ? 'ProgramDB' : 'CollegeDB reference'}
           </div>
         </div>
         <div className="flex items-center gap-1">
