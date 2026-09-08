@@ -13,10 +13,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AI DBMS Virtual Mentor',
+  title: 'ApexDB Mentor',
   description:
-    'A safe, interactive SQL playground for learning database management systems.',
-  icons: { icon: '/favicon.svg' },
+    'Team Apex’s interactive SQL workspace for learning database management systems.',
+  icons: { icon: '/apexdb-logo.png', apple: '/apexdb-logo.png' },
 };
 
 export default function RootLayout({
