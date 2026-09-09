@@ -21,7 +21,7 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Productivity:** D1-backed history, saved SQL, learning progress, practice analytics, and CSV/JSON export
 - **Student identity:** ChatGPT sign-in with server-enforced ownership for every persisted learning record
 - **Two-mode SQL Playground:** query the protected CollegeDB or switch in place to a browser-isolated editable copy for tables, rows, schema changes, and transactions
-- **Editable Playground:** a clean SQLite workspace where each program creates its own schema, with multi-statement execution, `.db`/`.sqlite` import, reset, recovery, export, and a matching live ER diagram
+- **Editable Playground:** a clean SQLite workspace where each program creates its own schema, with a rerunnable starter, multi-statement execution, `.db`/`.sqlite` import, reset, recovery, export, and a matching live ER diagram
 - **Editable AI Mentor:** Ask free-form DBMS doubts in the right panel and receive schema-aware guidance, next steps, cautions, and optional SQL that never runs without approval
 - **Mentor conversations:** Ask follow-up questions, reopen recent answers after refreshing, and clear a conversation without affecting another student's history
 - **Guided follow-ups:** Continue from every mentor answer with three contextual next questions that remain attached to saved conversation history
@@ -162,3 +162,4 @@ npm run build
 26. **Completed — Phase 27:** contextual next-question suggestions for every AI Mentor answer, including persistence with account-isolated conversation history.
 27. **Completed — Phase 28:** editable-first landing, simplified navigation and actions, prioritized Output and ER Diagram, and automatic ER refresh after table changes.
 28. **Completed — Phase 29:** clean program-scoped SQLite workspace whose ER diagram contains only the learner's tables, while CollegeDB remains isolated for reference and challenge grading.
+29. **Completed — Phase 30:** rerunnable starter SQL that preserves existing tables and rows, plus automatic upgrade of the earlier starter draft.
