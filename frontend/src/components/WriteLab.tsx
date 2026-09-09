@@ -109,13 +109,13 @@ type WriteLabMentorContext = {
   databaseName: string;
 };
 
-const STARTER_SCRIPT = `-- Create two related tables, insert data, and run the program.
-CREATE TABLE Department (
+const STARTER_SCRIPT = `-- Safe to run again: existing tables and rows are preserved.
+CREATE TABLE IF NOT EXISTS Department (
   department_id INTEGER PRIMARY KEY,
   department_name TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE Employee (
+CREATE TABLE IF NOT EXISTS Employee (
   employee_id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
   salary REAL NOT NULL,
@@ -123,11 +123,11 @@ CREATE TABLE Employee (
   FOREIGN KEY (department_id) REFERENCES Department(department_id)
 );
 
-INSERT INTO Department (department_id, department_name)
+INSERT OR IGNORE INTO Department (department_id, department_name)
 VALUES (1, 'Engineering'),
        (2, 'Design');
 
-INSERT INTO Employee (employee_id, name, salary, department_id)
+INSERT OR IGNORE INTO Employee (employee_id, name, salary, department_id)
 VALUES (1, 'Rahul', 45000, 1),
        (2, 'Priya', 52000, 2),
        (3, 'Aman', 48000, 1);
@@ -136,6 +136,16 @@ SELECT e.name, e.salary, d.department_name
 FROM Employee AS e
 JOIN Department AS d ON d.department_id = e.department_id
 ORDER BY e.salary DESC;`;
+
+const LEGACY_STARTER_SCRIPT = STARTER_SCRIPT.replaceAll(
+  ' IF NOT EXISTS',
+  '',
+)
+  .replaceAll(' OR IGNORE', '')
+  .replace(
+    '-- Safe to run again: existing tables and rows are preserved.',
+    '-- Create two related tables, insert data, and run the program.',
+  );
 
 const EXAMPLES = [
   { label: 'Create + insert', sql: STARTER_SCRIPT },
@@ -482,7 +492,9 @@ export function WriteLab() {
             if (!response.ok) throw new Error(response.error);
             if (cancelled) return;
             const draft = loadPracticeDraft();
-            setSql(draft?.sql ?? snapshot.sql);
+            const recoveredSql = draft?.sql ?? snapshot.sql;
+            const upgradedStarter = recoveredSql === LEGACY_STARTER_SCRIPT;
+            setSql(upgradedStarter ? STARTER_SCRIPT : recoveredSql);
             setDatabaseName(draft?.databaseName ?? snapshot.databaseName);
             lastSnapshotRef.current = {
               sql: snapshot.sql,
@@ -495,7 +507,9 @@ export function WriteLab() {
               draft && draft.savedAt > snapshot.savedAt ? 'draft' : 'saved',
             );
             setMessage(
-              'Your editable database and SQL draft were restored from this device.',
+              upgradedStarter
+                ? 'Your database was restored and the starter SQL was updated so it can be run again safely.'
+                : 'Your editable database and SQL draft were restored from this device.',
             );
             setReady(true);
             restored = true;
