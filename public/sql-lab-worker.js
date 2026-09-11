@@ -342,6 +342,35 @@ function stripLeadingComments(sql) {
     .trim();
 }
 
+function usesExplicitTransactions(sql) {
+  const withoutComments = sql
+    .replace(/--[^\n]*(?:\n|$)/gu, ' ')
+    .replace(/\/\*[\s\S]*?\*\//gu, ' ');
+  return /(?:^|;)\s*(?:BEGIN\b|COMMIT\b|END(?:\s+TRANSACTION)?\b|ROLLBACK\b|SAVEPOINT\b|RELEASE\b)/iu.test(
+    withoutComments,
+  );
+}
+
+function executeProgram(database, sql) {
+  if (usesExplicitTransactions(sql)) return database.exec(sql);
+
+  const savepoint = 'apexdb_program_run';
+  database.run(`SAVEPOINT ${savepoint};`);
+  try {
+    const results = database.exec(sql);
+    database.run(`RELEASE ${savepoint};`);
+    return results;
+  } catch (caught) {
+    try {
+      database.run(`ROLLBACK TO ${savepoint};`);
+      database.run(`RELEASE ${savepoint};`);
+    } catch {
+      // Keep the original SQLite error if cleanup itself cannot complete.
+    }
+    throw caught;
+  }
+}
+
 function validateChallengeSql(sql) {
   const cleaned = stripLeadingComments(sql);
   if (!cleaned)
@@ -483,7 +512,7 @@ self.onmessage = async (event) => {
 
     if (!sql || !sql.trim())
       throw new Error('Enter one or more SQL statements to run.');
-    const results = database.exec(sql);
+    const results = executeProgram(database, sql);
     self.postMessage({
       id,
       ok: true,
