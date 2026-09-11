@@ -38,7 +38,9 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 
 .mentor-grid {
   display: grid;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   grid-template-columns: 205px minmax(560px, 1fr) 300px;
   grid-template-rows: 56px minmax(0, 1fr);
   grid-template-areas: "header header header" "sidebar workspace mentor";
@@ -56,13 +58,13 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   .mentor-grid {
     grid-template-columns: 195px minmax(0, 1fr);
     grid-template-areas: "header header" "sidebar workspace";
-    overflow: auto;
+    overflow: hidden;
   }
   .app-mentor { display: none; }
 }
 
 @media (max-width: 760px) {
-  .mentor-grid { display: block; min-height: 100vh; overflow: visible; }
+  .mentor-grid { display: block; min-height: 0; overflow: hidden; }
   .app-sidebar { display: none; }
-  .app-workspace { min-height: calc(100vh - 56px); }
+  .app-workspace { height: calc(100dvh - 56px); min-height: 0; }
 }
