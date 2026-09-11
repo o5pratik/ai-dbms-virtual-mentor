@@ -97,6 +97,26 @@ assert.equal(emptySchema.diagram.tables.length, 0);
 assert.equal(emptySchema.diagram.relationships.length, 0);
 assert.equal(emptySchema.schema.length, 0);
 
+const failedProgram = await request('execute', {
+  sql: `CREATE TABLE PartialRun (id INTEGER PRIMARY KEY);
+        INSERT INTO MissingTable VALUES (1);`,
+});
+assert.equal(failedProgram.ok, false);
+const schemaAfterFailedProgram = await request('schema');
+assert.equal(
+  schemaAfterFailedProgram.schema.some((item) => item.name === 'PartialRun'),
+  false,
+  'A failed program must not leave earlier statements applied.',
+);
+const correctedProgram = await request('execute', {
+  sql: `CREATE TABLE PartialRun (id INTEGER PRIMARY KEY);
+        INSERT INTO PartialRun VALUES (1);
+        SELECT * FROM PartialRun;`,
+});
+assert.equal(correctedProgram.ok, true);
+assert.deepEqual(Array.from(correctedProgram.results[0].values[0]), [1]);
+await request('execute', { sql: 'DROP TABLE PartialRun;' });
+
 const editableScript = await request('execute', {
   sql: `CREATE TABLE Employee (
           employee_id INTEGER PRIMARY KEY,
@@ -144,6 +164,14 @@ assert.ok(
   ),
   'The live ER diagram should map new foreign keys.',
 );
+const explicitTransaction = await request('execute', {
+  sql: `BEGIN;
+        UPDATE Employee SET salary = 60000 WHERE employee_id = 1;
+        ROLLBACK;
+        SELECT salary FROM Employee WHERE employee_id = 1;`,
+});
+assert.equal(explicitTransaction.ok, true);
+assert.deepEqual(Array.from(explicitTransaction.results[0].values[0]), [45000]);
 const droppedTable = await request('execute', {
   sql: 'DROP TABLE Employee;',
 });
