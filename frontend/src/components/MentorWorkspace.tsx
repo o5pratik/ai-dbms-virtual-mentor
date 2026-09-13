@@ -114,7 +114,6 @@ export function MentorWorkspace({
   const [productivityLoading, setProductivityLoading] = useState(false);
   const [productivityLoaded, setProductivityLoaded] = useState(false);
   const [dayMode, setDayMode] = useState(false);
-  const [writeLabErRequest, setWriteLabErRequest] = useState(0);
 
   useEffect(() => {
     document.documentElement.dataset.theme = dayMode ? 'light' : 'dark';
@@ -438,11 +437,6 @@ export function MentorWorkspace({
       setSelectedTable('Student');
     setActiveView(view);
   };
-  const openEditableErDiagram = () => {
-    setPlaygroundMode('edit');
-    setActiveView('playground');
-    setWriteLabErRequest((request) => request + 1);
-  };
   const guideView = ['learn', 'team', 'help'].includes(activeView);
   const requestReport = (format: 'pdf' | 'doc' | 'txt') => {
     const dispatch = () =>
@@ -451,6 +445,7 @@ export function MentorWorkspace({
       );
     if (
       activeView === 'write-lab' ||
+      activeView === 'editable-er' ||
       (activeView === 'playground' && playgroundMode === 'edit')
     ) {
       dispatch();
@@ -488,11 +483,12 @@ export function MentorWorkspace({
           <div className="hidden h-5 w-px bg-[var(--border)] sm:block" />
           <div className="hidden items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-xs text-[var(--muted-bright)] sm:flex">
             <span
-              className={`h-1.5 w-1.5 rounded-full ${guideView ? 'bg-[var(--violet)]' : activeView === 'write-lab' || (activeView === 'playground' && playgroundMode === 'edit') ? 'bg-[var(--green)]' : 'bg-[var(--blue)]'}`}
+              className={`h-1.5 w-1.5 rounded-full ${guideView ? 'bg-[var(--violet)]' : activeView === 'write-lab' || activeView === 'editable-er' || (activeView === 'playground' && playgroundMode === 'edit') ? 'bg-[var(--green)]' : 'bg-[var(--blue)]'}`}
             />
             {guideView
               ? 'Project guide'
               : activeView === 'write-lab' ||
+                  activeView === 'editable-er' ||
                   (activeView === 'playground' && playgroundMode === 'edit')
                 ? 'ProgramDB'
                 : 'CollegeDB reference'}
@@ -594,11 +590,7 @@ export function MentorWorkspace({
         </div>
       </header>
 
-      <Sidebar
-        activeView={activeView}
-        onNavigate={navigateTo}
-        onOpenErDiagram={openEditableErDiagram}
-      />
+      <Sidebar activeView={activeView} onNavigate={navigateTo} />
 
       {activeView === 'learn' ? (
         <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
@@ -756,12 +748,22 @@ export function MentorWorkspace({
               </div>
             </>
           ) : (
-            <WriteLab openErRequest={writeLabErRequest} />
+            <WriteLab />
           )}
         </section>
       ) : activeView === 'write-lab' ? (
         <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
-          <WriteLab openErRequest={writeLabErRequest} />
+          <WriteLab />
+        </section>
+      ) : activeView === 'editable-er' ? (
+        <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
+          <WriteLab
+            mode="diagram"
+            onOpenWorkspace={() => {
+              setPlaygroundMode('edit');
+              setActiveView('playground');
+            }}
+          />
         </section>
       ) : activeView === 'schema-lab' ? (
         <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
@@ -832,7 +834,7 @@ export function MentorWorkspace({
             onReject={() => setMentorView({ kind: 'welcome' })}
           />
         )
-      ) : activeView === 'write-lab' ? (
+      ) : activeView === 'write-lab' || activeView === 'editable-er' ? (
         <WriteLabContextPanel />
       ) : activeView === 'schema-lab' ? (
         <SchemaLabContextPanel schema={customSchema} />

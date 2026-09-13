@@ -504,7 +504,13 @@ function downloadLabReport(format: ReportFormat, report: LabReport) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-export function WriteLab({ openErRequest = 0 }: { openErRequest?: number }) {
+export function WriteLab({
+  mode = 'workspace',
+  onOpenWorkspace,
+}: {
+  mode?: 'workspace' | 'diagram';
+  onOpenWorkspace?: () => void;
+}) {
   const [sql, setSql] = useState(STARTER_SCRIPT);
   const [results, setResults] = useState<ResultSet[]>([]);
   const [schema, setSchema] = useState<SchemaObject[]>([]);
@@ -546,10 +552,6 @@ export function WriteLab({ openErRequest = 0 }: { openErRequest?: number }) {
   const pendingRef = useRef(new Map<number, PendingRequest>());
   const requestIdRef = useRef(0);
   const lastSnapshotRef = useRef({ sql: '', databaseName: '' });
-
-  useEffect(() => {
-    if (openErRequest > 0) setActiveTab('er');
-  }, [openErRequest]);
 
   const stopWorker = useCallback((reason?: string) => {
     workerRef.current?.terminate();
@@ -1243,6 +1245,82 @@ LIMIT 100;`;
     draft: 'SQL draft saved',
     unavailable: 'Local autosave unavailable',
   }[saveState];
+
+  if (mode === 'diagram') {
+    return (
+      <>
+        <header className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--violet)]">
+              Editable database
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--text)]">
+              ER Diagram
+            </h1>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              A live, full-size map of the tables and relationships in{' '}
+              {databaseName}.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-2 text-xs text-[var(--muted-bright)]">
+              {diagram?.tables.length ?? 0} tables
+            </span>
+            <span className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-2 text-xs text-[var(--muted-bright)]">
+              {diagram?.relationships.length ?? 0} relationships
+            </span>
+            <button
+              type="button"
+              onClick={onOpenWorkspace}
+              className="flex items-center gap-2 rounded-lg bg-[var(--blue)] px-3.5 py-2 text-sm font-semibold text-white hover:bg-[var(--blue-bright)]"
+            >
+              <CodeXml size={15} />
+              Open SQL Workspace
+            </button>
+          </div>
+        </header>
+
+        <div className="flex min-h-0 flex-1 overflow-hidden bg-[#0b1018] p-4">
+          {!ready ? (
+            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-sm text-[var(--muted)]">
+              Loading your editable database diagram…
+            </div>
+          ) : diagram?.tables.length ? (
+            <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-[var(--border)] shadow-2xl">
+              <ErDiagram
+                schema={{ ...diagram, database: databaseName }}
+                selectedTable={activeDiagramTable}
+                onSelectTable={setSelectedDiagramTable}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--border)] text-center">
+              <div className="max-w-sm px-6">
+                <Table2
+                  className="mx-auto text-[var(--violet)]"
+                  size={30}
+                />
+                <p className="mt-4 text-base font-semibold text-[var(--text)]">
+                  No tables to map yet
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  Create and run at least one table in the SQL Workspace. Its ER
+                  diagram will appear here automatically.
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenWorkspace}
+                  className="mt-4 rounded-lg bg-[var(--blue)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--blue-bright)]"
+                >
+                  Open SQL Workspace
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
