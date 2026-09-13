@@ -137,10 +137,7 @@ FROM Employee AS e
 JOIN Department AS d ON d.department_id = e.department_id
 ORDER BY e.salary DESC;`;
 
-const LEGACY_STARTER_SCRIPT = STARTER_SCRIPT.replaceAll(
-  ' IF NOT EXISTS',
-  '',
-)
+const LEGACY_STARTER_SCRIPT = STARTER_SCRIPT.replaceAll(' IF NOT EXISTS', '')
   .replaceAll(' OR IGNORE', '')
   .replace(
     '-- Safe to run again: existing tables and rows are preserved.',
@@ -318,6 +315,193 @@ function displayValue(value: SqlValue) {
 
 function quoteSqlIdentifier(value: string) {
   return `"${value.replace(/"/g, '""')}"`;
+}
+
+type ReportFormat = 'pdf' | 'doc' | 'txt';
+type LabReport = {
+  databaseName: string;
+  sql: string;
+  lastExecutedSql: string;
+  message: string;
+  error: string;
+  results: ResultSet[];
+  schema: SchemaObject[];
+  diagram: SchemaResponse | null;
+};
+
+function reportValue(value: SqlValue) {
+  if (value === null) return 'NULL';
+  if (value instanceof Uint8Array) return `<BLOB ${value.byteLength} bytes>`;
+  return String(value);
+}
+
+function escapeReportHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
+function reportSteps(sql: string) {
+  return sql
+    .split(';')
+    .map((statement) => statement.trim())
+    .filter(Boolean)
+    .map((statement, index) => {
+      const type =
+        statement
+          .match(
+            /\b(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE|SELECT|WITH|PRAGMA|BEGIN|COMMIT|ROLLBACK)\b/i,
+          )?.[1]
+          ?.toUpperCase() ?? 'SQL';
+      return `${index + 1}. ${type} statement processed`;
+    });
+}
+
+function resultText(result: ResultSet) {
+  const rows = [result.columns, ...result.values].map((row) =>
+    row.map((value) => reportValue(value)).join(' | '),
+  );
+  return `${rows.join('\n')}\n${result.rowCount} row(s)${result.truncated ? ' · preview truncated' : ''}`;
+}
+
+function buildTextReport(report: LabReport) {
+  const intermediate = report.results.slice(0, -1);
+  const finalResult = report.results.at(-1);
+  return [
+    'APEXDB MENTOR — EXECUTION REPORT',
+    `Generated: ${new Date().toLocaleString()}`,
+    `Database: ${report.databaseName}`,
+    '',
+    '1. USER INPUTS',
+    report.sql || 'No SQL input.',
+    '',
+    '2. PROCESSING STEPS',
+    reportSteps(report.lastExecutedSql).join('\n') ||
+      'No script has been executed yet.',
+    '',
+    '3. INTERMEDIATE RESULTS',
+    intermediate.length
+      ? intermediate
+          .map((result, index) => `Result ${index + 1}\n${resultText(result)}`)
+          .join('\n\n')
+      : 'No intermediate result sets.',
+    '',
+    '4. FINAL OUTPUT',
+    report.error
+      ? `Execution error: ${report.error}`
+      : finalResult
+        ? resultText(finalResult)
+        : report.message,
+    '',
+    '5. TABLES AND ER RELATIONSHIPS',
+    report.schema.length
+      ? report.schema
+          .map((item) => `${item.type.toUpperCase()}: ${item.name}`)
+          .join('\n')
+      : 'No schema objects.',
+    report.diagram?.relationships.length
+      ? report.diagram.relationships
+          .map(
+            (item) =>
+              `${item.from_table}.${item.from_column} → ${item.to_table}.${item.to_column}`,
+          )
+          .join('\n')
+      : 'No foreign-key relationships.',
+  ].join('\n');
+}
+
+function buildHtmlReport(report: LabReport) {
+  const sections = report.results
+    .map(
+      (result, index) =>
+        `<section><h3>${
+          index === report.results.length - 1
+            ? 'Final output'
+            : `Intermediate result ${index + 1}`
+        }</h3><div class="table-wrap"><table><thead><tr>${result.columns
+          .map((column) => `<th>${escapeReportHtml(column)}</th>`)
+          .join('')}</tr></thead><tbody>${result.values
+          .map(
+            (row) =>
+              `<tr>${row
+                .map(
+                  (value) => `<td>${escapeReportHtml(reportValue(value))}</td>`,
+                )
+                .join('')}</tr>`,
+          )
+          .join('')}</tbody></table></div><p>${result.rowCount} row(s)${
+          result.truncated ? ' · preview truncated' : ''
+        }</p></section>`,
+    )
+    .join('');
+  const relationships =
+    report.diagram?.relationships
+      .map(
+        (item) =>
+          `<li><code>${escapeReportHtml(item.from_table)}.${escapeReportHtml(item.from_column)}</code> → <code>${escapeReportHtml(item.to_table)}.${escapeReportHtml(item.to_column)}</code></li>`,
+      )
+      .join('') || '<li>No foreign-key relationships.</li>';
+  return `<!doctype html><html><head><meta charset="utf-8"><title>ApexDB Mentor execution report</title><style>
+  body{font:15px/1.55 Arial,sans-serif;color:#172033;max-width:960px;margin:0 auto;padding:38px}h1{color:#4f46e5;margin-bottom:4px}h2{margin-top:32px;border-bottom:1px solid #d8deea;padding-bottom:6px}h3{margin-top:22px}pre{white-space:pre-wrap;background:#f4f6fb;border:1px solid #d8deea;border-radius:8px;padding:14px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccd4e3;padding:8px;text-align:left}th{background:#eef1f8}.meta{color:#566176}.table-wrap{overflow:auto}code{color:#4338ca}@media print{body{padding:0}.table-wrap{overflow:visible}}
+  </style></head><body><h1>ApexDB Mentor</h1><p class="meta">Execution report · ${escapeReportHtml(new Date().toLocaleString())} · ${escapeReportHtml(report.databaseName)}</p>
+  <h2>1. User inputs</h2><pre>${escapeReportHtml(report.sql || 'No SQL input.')}</pre>
+  <h2>2. Processing steps</h2><ol>${
+    reportSteps(report.lastExecutedSql)
+      .map(
+        (step) => `<li>${escapeReportHtml(step.replace(/^\d+\.\s*/, ''))}</li>`,
+      )
+      .join('') || '<li>No script has been executed yet.</li>'
+  }</ol>
+  <h2>3–4. Intermediate results and final output</h2>${sections || `<p>${escapeReportHtml(report.error || report.message)}</p>`}
+  ${report.error ? `<p><strong>Execution error:</strong> ${escapeReportHtml(report.error)}</p>` : ''}
+  <h2>5. Tables and ER relationships</h2><p>${report.schema.length ? report.schema.map((item) => `${escapeReportHtml(item.type)}: <strong>${escapeReportHtml(item.name)}</strong>`).join(' · ') : 'No schema objects.'}</p><ul>${relationships}</ul>
+  </body></html>`;
+}
+
+function downloadLabReport(format: ReportFormat, report: LabReport) {
+  const filename = `apexdb-report-${new Date().toISOString().slice(0, 10)}`;
+  if (format === 'pdf') {
+    const reportUrl = URL.createObjectURL(
+      new Blob([buildHtmlReport(report)], { type: 'text/html;charset=utf-8' }),
+    );
+    const printWindow = window.open(
+      reportUrl,
+      '_blank',
+      'width=1000,height=800',
+    );
+    if (!printWindow) {
+      URL.revokeObjectURL(reportUrl);
+      return;
+    }
+    printWindow.addEventListener(
+      'load',
+      () => {
+        printWindow.focus();
+        printWindow.print();
+        URL.revokeObjectURL(reportUrl);
+      },
+      { once: true },
+    );
+    return;
+  }
+  const content =
+    format === 'doc' ? buildHtmlReport(report) : buildTextReport(report);
+  const blob = new Blob([content], {
+    type:
+      format === 'doc'
+        ? 'application/msword;charset=utf-8'
+        : 'text/plain;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${filename}.${format}`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
 export function WriteLab() {
@@ -587,6 +771,34 @@ export function WriteLab() {
     window.addEventListener('write-lab-example', useExample);
     return () => window.removeEventListener('write-lab-example', useExample);
   }, []);
+
+  useEffect(() => {
+    const createReport = (event: Event) => {
+      const format = (event as CustomEvent<ReportFormat>).detail;
+      if (!['pdf', 'doc', 'txt'].includes(format)) return;
+      downloadLabReport(format, {
+        databaseName,
+        sql,
+        lastExecutedSql,
+        message,
+        error,
+        results,
+        schema,
+        diagram,
+      });
+    };
+    window.addEventListener('write-lab-download', createReport);
+    return () => window.removeEventListener('write-lab-download', createReport);
+  }, [
+    databaseName,
+    diagram,
+    error,
+    lastExecutedSql,
+    message,
+    results,
+    schema,
+    sql,
+  ]);
 
   useEffect(() => {
     const useChallenge = (event: Event) => {
@@ -1626,14 +1838,20 @@ export function WriteLabContextPanel() {
   const [mentorQuestion, setMentorQuestion] = useState('');
   const [mentorAnswer, setMentorAnswer] =
     useState<MentorConversationItem | null>(null);
-  const [mentorHistory, setMentorHistory] = useState<
-    MentorConversationItem[]
-  >([]);
+  const [mentorHistory, setMentorHistory] = useState<MentorConversationItem[]>(
+    [],
+  );
   const [mentorHistoryLoading, setMentorHistoryLoading] = useState(true);
   const [mentorLoading, setMentorLoading] = useState(false);
   const [mentorError, setMentorError] = useState('');
   const [mentorCopied, setMentorCopied] = useState(false);
   const mentorContextRef = useRef<WriteLabMentorContext>({
+    currentSql: '',
+    schema: '',
+    databaseError: '',
+    databaseName: 'ProgramDB',
+  });
+  const [mentorContext, setMentorContext] = useState<WriteLabMentorContext>({
     currentSql: '',
     schema: '',
     databaseError: '',
@@ -1652,7 +1870,10 @@ export function WriteLabContextPanel() {
   useEffect(() => {
     const receiveContext = (event: Event) => {
       const context = (event as CustomEvent<WriteLabMentorContext>).detail;
-      if (context) mentorContextRef.current = context;
+      if (context) {
+        mentorContextRef.current = context;
+        setMentorContext(context);
+      }
     };
     window.addEventListener('write-lab-context', receiveContext);
     window.dispatchEvent(new Event('write-lab-context-request'));
@@ -1677,8 +1898,8 @@ export function WriteLabContextPanel() {
     };
   }, []);
 
-  const askMentor = async () => {
-    const question = mentorQuestion.trim();
+  const askMentor = async (questionOverride?: string) => {
+    const question = (questionOverride ?? mentorQuestion).trim();
     if (!question || mentorLoading) return;
     window.dispatchEvent(new Event('write-lab-context-request'));
     setMentorLoading(true);
@@ -1691,12 +1912,14 @@ export function WriteLabContextPanel() {
         context.currentSql,
         context.schema,
         context.databaseError,
+        context.databaseName,
       );
       setMentorAnswer(nextAnswer);
       setMentorHistory((current) =>
-        [...current.filter((item) => item.id !== nextAnswer.id), nextAnswer].slice(
-          -20,
-        ),
+        [
+          ...current.filter((item) => item.id !== nextAnswer.id),
+          nextAnswer,
+        ].slice(-20),
       );
       setMentorQuestion('');
     } catch (caught) {
@@ -1709,6 +1932,27 @@ export function WriteLabContextPanel() {
       setMentorLoading(false);
     }
   };
+
+  const mentorPrompts = mentorContext.databaseError
+    ? [
+        'Fix my current error',
+        'Explain why this error happened',
+        'Show the smallest safe correction',
+      ]
+    : mentorContext.currentSql.trim()
+      ? [
+          'Review my current SQL',
+          'Explain what this script does',
+          'How can I improve this query?',
+        ]
+      : [
+          'Help me create my first table',
+          'Show a safe INSERT example',
+          'Teach me how SQL JOINs work',
+        ];
+  const schemaTableCount = (
+    mentorContext.schema.match(/\bCREATE\s+TABLE\b/gi) ?? []
+  ).length;
 
   const clearMentorHistory = async () => {
     if (!mentorHistory.length) return;
@@ -1867,13 +2111,33 @@ export function WriteLabContextPanel() {
             <div>
               <h2 className="text-sm font-bold">Ask Apex AI</h2>
               <p className="text-xs text-[var(--muted)]">
-                Uses your SQL, schema, and latest error
+                Answers from your live SQL workspace
               </p>
             </div>
             <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-[var(--green)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--green)]" />
               Ready
             </span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-semibold">
+            <span className="rounded-full border border-[var(--border)] bg-[#0b1018] px-2 py-1 text-[var(--muted-bright)]">
+              {mentorContext.databaseName}
+            </span>
+            <span className="rounded-full border border-[var(--border)] bg-[#0b1018] px-2 py-1 text-[var(--muted)]">
+              {schemaTableCount
+                ? `${schemaTableCount} table${schemaTableCount === 1 ? '' : 's'} attached`
+                : 'No tables yet'}
+            </span>
+            {mentorContext.currentSql.trim() ? (
+              <span className="rounded-full border border-[color:rgb(109_141_255_/_28%)] bg-[color:rgb(109_141_255_/_8%)] px-2 py-1 text-[var(--blue-bright)]">
+                Current SQL attached
+              </span>
+            ) : null}
+            {mentorContext.databaseError ? (
+              <span className="rounded-full border border-[color:rgb(255_107_135_/_28%)] bg-[color:rgb(255_107_135_/_7%)] px-2 py-1 text-[var(--red)]">
+                Error attached
+              </span>
+            ) : null}
           </div>
           <form
             className="mt-3"
@@ -1894,7 +2158,10 @@ export function WriteLabContextPanel() {
                 value={mentorQuestion}
                 onChange={(event) => setMentorQuestion(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                  if (
+                    event.key === 'Enter' &&
+                    (event.ctrlKey || event.metaKey)
+                  ) {
                     event.preventDefault();
                     void askMentor();
                   }
@@ -1918,21 +2185,18 @@ export function WriteLabContextPanel() {
                   ) : (
                     <CornerDownLeft size={13} />
                   )}
-                  {mentorLoading ? 'Thinking…' : 'Ask mentor'}
+                  {mentorLoading ? 'Thinking…' : 'Ask Apex AI'}
                 </button>
               </div>
             </div>
           </form>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {[
-              'Explain my error',
-              'How should I JOIN these tables?',
-              'How do I insert data safely?',
-            ].map((prompt) => (
+            {mentorPrompts.map((prompt) => (
               <button
                 key={prompt}
                 type="button"
-                onClick={() => setMentorQuestion(prompt)}
+                disabled={mentorLoading}
+                onClick={() => void askMentor(prompt)}
                 className="rounded-full border border-[var(--border)] bg-[#0b1018] px-2.5 py-1.5 text-xs text-[var(--muted-bright)] hover:border-[color:rgb(155_124_255_/_45%)] hover:text-[var(--text)]"
               >
                 {prompt}
@@ -1947,46 +2211,55 @@ export function WriteLabContextPanel() {
             Loading your mentor conversation…
           </div>
         ) : mentorHistory.length ? (
-          <div className="border-b border-[color:rgb(155_124_255_/_16%)] p-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted-bright)]">
-                <MessageSquareText size={14} className="text-[#b9a5ff]" />
-                Recent conversation
-              </p>
-              <button
-                type="button"
-                onClick={() => void clearMentorHistory()}
-                className="flex items-center gap-1 text-xs font-semibold text-[var(--muted)] hover:text-[var(--red)]"
-              >
-                <Trash2 size={12} /> Clear
-              </button>
+          <details className="group border-b border-[color:rgb(155_124_255_/_16%)]">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wider text-[var(--muted-bright)] hover:bg-white/[0.02]">
+              <MessageSquareText size={14} className="text-[#b9a5ff]" />
+              Previous questions
+              <span className="rounded-full bg-[color:rgb(155_124_255_/_12%)] px-2 py-0.5 text-[#b9a5ff]">
+                {mentorHistory.length}
+              </span>
+              <ChevronDown
+                size={13}
+                className="ml-auto text-[var(--muted)] transition group-open:rotate-180"
+              />
+            </summary>
+            <div className="border-t border-[color:rgb(155_124_255_/_12%)] p-3">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void clearMentorHistory()}
+                  className="flex items-center gap-1 text-xs font-semibold text-[var(--muted)] hover:text-[var(--red)]"
+                >
+                  <Trash2 size={12} /> Clear
+                </button>
+              </div>
+              <div className="mt-2 space-y-1.5">
+                {mentorHistory
+                  .slice(-4)
+                  .reverse()
+                  .map((item) => {
+                    const selected =
+                      mentorAnswer?.id === item.id &&
+                      mentorAnswer?.created_at === item.created_at;
+                    return (
+                      <button
+                        key={`${item.id ?? 'pending'}-${item.created_at}`}
+                        type="button"
+                        onClick={() => setMentorAnswer(item)}
+                        className={`w-full rounded-lg border px-3 py-2 text-left transition ${selected ? 'border-[color:rgb(155_124_255_/_42%)] bg-[color:rgb(155_124_255_/_10%)]' : 'border-[var(--border)] bg-[#0b1018] hover:border-[var(--border-bright)]'}`}
+                      >
+                        <span className="block truncate text-sm font-semibold text-[var(--text)]">
+                          {item.question}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">
+                          {item.answer}
+                        </span>
+                      </button>
+                    );
+                  })}
+              </div>
             </div>
-            <div className="mt-2 space-y-1.5">
-              {mentorHistory
-                .slice(-6)
-                .reverse()
-                .map((item) => {
-                  const selected =
-                    mentorAnswer?.id === item.id &&
-                    mentorAnswer?.created_at === item.created_at;
-                  return (
-                    <button
-                      key={`${item.id ?? 'pending'}-${item.created_at}`}
-                      type="button"
-                      onClick={() => setMentorAnswer(item)}
-                      className={`w-full rounded-lg border px-3 py-2 text-left transition ${selected ? 'border-[color:rgb(155_124_255_/_42%)] bg-[color:rgb(155_124_255_/_10%)]' : 'border-[var(--border)] bg-[#0b1018] hover:border-[var(--border-bright)]'}`}
-                    >
-                      <span className="block truncate text-sm font-semibold text-[var(--text)]">
-                        {item.question}
-                      </span>
-                      <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">
-                        {item.answer}
-                      </span>
-                    </button>
-                  );
-                })}
-            </div>
-          </div>
+          </details>
         ) : null}
 
         {mentorLoading ? (
@@ -2010,7 +2283,9 @@ export function WriteLabContextPanel() {
                 <Sparkles size={14} /> Mentor guidance
               </p>
               <span className="rounded-full border border-[var(--border)] px-2 py-1 text-xs text-[var(--muted)]">
-                {mentorAnswer.source === 'groq' ? 'AI response' : 'Built-in tutor'}
+                {mentorAnswer.source === 'groq'
+                  ? 'AI response'
+                  : 'Built-in tutor'}
               </span>
             </div>
             <div className="ml-5 rounded-xl rounded-tr-sm border border-[color:rgb(109_141_255_/_24%)] bg-[color:rgb(109_141_255_/_9%)] px-3 py-2 text-sm leading-5 text-[var(--text)]">
@@ -2118,166 +2393,173 @@ export function WriteLabContextPanel() {
           />
         </summary>
         <div className="border-t border-[color:rgb(246_199_111_/_16%)] p-4">
-        <div>
-          <progress
-            aria-label="SQL challenge completion"
-            max={CHALLENGES.length}
-            value={completedChallenges}
-            className="h-1.5 w-full accent-[var(--green)]"
-          />
-          <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--muted)]">
-            <span>{completionPercent}% complete</span>
-            {Object.keys(challengeProgress).length ? (
-              <button
-                type="button"
-                onClick={resetProgress}
-                className="font-semibold hover:text-[var(--text)]"
-              >
-                Reset progress
-              </button>
-            ) : null}
-          </div>
-          <p
-            className={`mt-2 flex items-center gap-1.5 text-[11px] ${syncState === 'local' ? 'text-[#f6c76f]' : 'text-[var(--muted)]'}`}
-          >
-            {syncState === 'local' ? (
-              <CloudOff size={12} />
-            ) : (
-              <Cloud size={12} />
-            )}
-            {syncState === 'loading'
-              ? 'Checking cloud progress…'
-              : syncState === 'syncing'
-                ? 'Syncing progress…'
-                : syncState === 'synced'
-                  ? 'Progress synced to your site'
-                  : 'Cloud unavailable · saved on this device'}
-          </p>
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <div className="rounded-lg border border-[var(--border)] bg-[#0b1018] p-2.5">
-            <p className="text-base font-bold text-[var(--text)]">
-              {passEfficiency}%
-            </p>
-            <p className="mt-0.5 text-[10px] text-[var(--muted)]">
-              Check accuracy
-            </p>
-          </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[#0b1018] p-2.5">
-            <p className="text-base font-bold text-[var(--text)]">
-              {totalAttempts}
-            </p>
-            <p className="mt-0.5 text-[10px] text-[var(--muted)]">Attempts</p>
-          </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[#0b1018] p-2.5">
-            <p className="text-base font-bold text-[var(--text)]">
-              {firstTryWins}
-            </p>
-            <p className="mt-0.5 text-[10px] text-[var(--muted)]">
-              First-try wins
-            </p>
-          </div>
-        </div>
-        <div className="mt-3 rounded-lg border border-[color:rgb(109_141_255_/_28%)] bg-[color:rgb(109_141_255_/_7%)] p-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-[var(--blue-bright)]">
-            {recommendedChallenge ? <Target size={14} /> : <Trophy size={14} />}
-            {recommendedChallenge ? 'Recommended next' : 'Path complete'}
-          </div>
-          {recommendedChallenge ? (
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[var(--text)]">
-                  {recommendedChallenge.challenge.title}
-                </p>
-                <p className="mt-0.5 text-[11px] text-[var(--muted)]">
-                  {recommendedChallenge.progress?.failedAttempts
-                    ? `Retry ${recommendedChallenge.challenge.topic} · ${recommendedChallenge.progress.failedAttempts} failed check${recommendedChallenge.progress.failedAttempts === 1 ? '' : 's'}`
-                    : `${recommendedChallenge.challenge.topic} · ${recommendedChallenge.challenge.difficulty}`}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedChallenge(recommendedChallenge.challenge.id);
-                  dispatchChallenge(recommendedChallenge.challenge);
-                }}
-                className="flex shrink-0 items-center gap-1 rounded-lg bg-[var(--blue)] px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[var(--blue-bright)]"
-              >
-                {recommendedChallenge.progress ? 'Retry' : 'Start'}
-                <ArrowRight size={12} />
-              </button>
+          <div>
+            <progress
+              aria-label="SQL challenge completion"
+              max={CHALLENGES.length}
+              value={completedChallenges}
+              className="h-1.5 w-full accent-[var(--green)]"
+            />
+            <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--muted)]">
+              <span>{completionPercent}% complete</span>
+              {Object.keys(challengeProgress).length ? (
+                <button
+                  type="button"
+                  onClick={resetProgress}
+                  className="font-semibold hover:text-[var(--text)]"
+                >
+                  Reset progress
+                </button>
+              ) : null}
             </div>
-          ) : (
-            <p className="mt-2 text-xs leading-5 text-[var(--muted-bright)]">
-              You completed every graded SQL challenge.
+            <p
+              className={`mt-2 flex items-center gap-1.5 text-[11px] ${syncState === 'local' ? 'text-[#f6c76f]' : 'text-[var(--muted)]'}`}
+            >
+              {syncState === 'local' ? (
+                <CloudOff size={12} />
+              ) : (
+                <Cloud size={12} />
+              )}
+              {syncState === 'loading'
+                ? 'Checking cloud progress…'
+                : syncState === 'syncing'
+                  ? 'Syncing progress…'
+                  : syncState === 'synced'
+                    ? 'Progress synced to your site'
+                    : 'Cloud unavailable · saved on this device'}
             </p>
-          )}
-        </div>
-        <div className="mt-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-            Mastery badges
-          </p>
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            {masteryBadges.map((badge) => (
-              <div
-                key={badge.label}
-                title={badge.detail}
-                className={`rounded-lg border p-2 text-center ${badge.earned ? 'border-[color:rgb(246_199_111_/_38%)] bg-[color:rgb(246_199_111_/_7%)]' : 'border-[var(--border)] bg-[#0b1018] opacity-55'}`}
-              >
-                <Award
-                  size={15}
-                  className={`mx-auto ${badge.earned ? 'text-[#f6c76f]' : 'text-[var(--muted)]'}`}
-                />
-                <p className="mt-1 text-[10px] font-semibold text-[var(--muted-bright)]">
-                  {badge.label}
-                </p>
-                <span className="sr-only">
-                  {badge.earned ? 'Earned' : 'Locked'}: {badge.detail}
-                </span>
-              </div>
-            ))}
           </div>
-        </div>
-        <div className="mt-3 space-y-2">
-          {CHALLENGES.map((challenge) => {
-            const progress = challengeProgress[challenge.id];
-            return (
-              <button
-                key={challenge.id}
-                type="button"
-                onClick={() => {
-                  setSelectedChallenge(challenge.id);
-                  dispatchChallenge(challenge);
-                }}
-                className={`w-full rounded-lg border bg-[#0b1018] p-3 text-left ${progress?.passed ? 'border-[color:rgb(72_213_151_/_38%)]' : selectedChallenge === challenge.id ? 'border-[color:rgb(246_199_111_/_45%)]' : 'border-[var(--border)] hover:border-[color:rgb(246_199_111_/_38%)]'}`}
-              >
-                <span className="flex items-center justify-between gap-2">
-                  <strong className="flex items-center gap-1.5 text-sm text-[var(--text)]">
-                    {progress?.passed ? (
-                      <CheckCircle2 size={14} className="text-[var(--green)]" />
-                    ) : null}
-                    {challenge.title}
-                  </strong>
-                  <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] text-[var(--muted)]">
-                    {challenge.topic} · {challenge.difficulty}
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-[var(--border)] bg-[#0b1018] p-2.5">
+              <p className="text-base font-bold text-[var(--text)]">
+                {passEfficiency}%
+              </p>
+              <p className="mt-0.5 text-[10px] text-[var(--muted)]">
+                Check accuracy
+              </p>
+            </div>
+            <div className="rounded-lg border border-[var(--border)] bg-[#0b1018] p-2.5">
+              <p className="text-base font-bold text-[var(--text)]">
+                {totalAttempts}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[var(--muted)]">Attempts</p>
+            </div>
+            <div className="rounded-lg border border-[var(--border)] bg-[#0b1018] p-2.5">
+              <p className="text-base font-bold text-[var(--text)]">
+                {firstTryWins}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[var(--muted)]">
+                First-try wins
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 rounded-lg border border-[color:rgb(109_141_255_/_28%)] bg-[color:rgb(109_141_255_/_7%)] p-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-[var(--blue-bright)]">
+              {recommendedChallenge ? (
+                <Target size={14} />
+              ) : (
+                <Trophy size={14} />
+              )}
+              {recommendedChallenge ? 'Recommended next' : 'Path complete'}
+            </div>
+            {recommendedChallenge ? (
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[var(--text)]">
+                    {recommendedChallenge.challenge.title}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+                    {recommendedChallenge.progress?.failedAttempts
+                      ? `Retry ${recommendedChallenge.challenge.topic} · ${recommendedChallenge.progress.failedAttempts} failed check${recommendedChallenge.progress.failedAttempts === 1 ? '' : 's'}`
+                      : `${recommendedChallenge.challenge.topic} · ${recommendedChallenge.challenge.difficulty}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedChallenge(recommendedChallenge.challenge.id);
+                    dispatchChallenge(recommendedChallenge.challenge);
+                  }}
+                  className="flex shrink-0 items-center gap-1 rounded-lg bg-[var(--blue)] px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[var(--blue-bright)]"
+                >
+                  {recommendedChallenge.progress ? 'Retry' : 'Start'}
+                  <ArrowRight size={12} />
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs leading-5 text-[var(--muted-bright)]">
+                You completed every graded SQL challenge.
+              </p>
+            )}
+          </div>
+          <div className="mt-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+              Mastery badges
+            </p>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {masteryBadges.map((badge) => (
+                <div
+                  key={badge.label}
+                  title={badge.detail}
+                  className={`rounded-lg border p-2 text-center ${badge.earned ? 'border-[color:rgb(246_199_111_/_38%)] bg-[color:rgb(246_199_111_/_7%)]' : 'border-[var(--border)] bg-[#0b1018] opacity-55'}`}
+                >
+                  <Award
+                    size={15}
+                    className={`mx-auto ${badge.earned ? 'text-[#f6c76f]' : 'text-[var(--muted)]'}`}
+                  />
+                  <p className="mt-1 text-[10px] font-semibold text-[var(--muted-bright)]">
+                    {badge.label}
+                  </p>
+                  <span className="sr-only">
+                    {badge.earned ? 'Earned' : 'Locked'}: {badge.detail}
                   </span>
-                </span>
-                <span className="mt-1.5 block text-xs leading-5 text-[var(--muted-bright)]">
-                  {challenge.prompt}
-                </span>
-                <span className="mt-1 flex items-center justify-between gap-2 text-[11px] leading-4 text-[var(--muted)]">
-                  <span>Hint: {challenge.hint}</span>
-                  {progress ? (
-                    <span className="shrink-0 font-semibold">
-                      {progress.attempts} attempt
-                      {progress.attempts === 1 ? '' : 's'}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-3 space-y-2">
+            {CHALLENGES.map((challenge) => {
+              const progress = challengeProgress[challenge.id];
+              return (
+                <button
+                  key={challenge.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedChallenge(challenge.id);
+                    dispatchChallenge(challenge);
+                  }}
+                  className={`w-full rounded-lg border bg-[#0b1018] p-3 text-left ${progress?.passed ? 'border-[color:rgb(72_213_151_/_38%)]' : selectedChallenge === challenge.id ? 'border-[color:rgb(246_199_111_/_45%)]' : 'border-[var(--border)] hover:border-[color:rgb(246_199_111_/_38%)]'}`}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <strong className="flex items-center gap-1.5 text-sm text-[var(--text)]">
+                      {progress?.passed ? (
+                        <CheckCircle2
+                          size={14}
+                          className="text-[var(--green)]"
+                        />
+                      ) : null}
+                      {challenge.title}
+                    </strong>
+                    <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] text-[var(--muted)]">
+                      {challenge.topic} · {challenge.difficulty}
                     </span>
-                  ) : null}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                  </span>
+                  <span className="mt-1.5 block text-xs leading-5 text-[var(--muted-bright)]">
+                    {challenge.prompt}
+                  </span>
+                  <span className="mt-1 flex items-center justify-between gap-2 text-[11px] leading-4 text-[var(--muted)]">
+                    <span>Hint: {challenge.hint}</span>
+                    {progress ? (
+                      <span className="shrink-0 font-semibold">
+                        {progress.attempts} attempt
+                        {progress.attempts === 1 ? '' : 's'}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </details>
       <details className="group mt-3 overflow-hidden rounded-xl border border-[var(--border)]">
@@ -2306,7 +2588,8 @@ export function WriteLabContextPanel() {
             </button>
           ))}
           <p className="px-1 pt-1 text-xs leading-5 text-[var(--muted)]">
-            SQLite only. Your editable database is isolated and restored on this device.
+            SQLite only. Your editable database is isolated and restored on this
+            device.
           </p>
         </div>
       </details>
