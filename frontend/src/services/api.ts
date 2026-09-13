@@ -227,12 +227,14 @@ export function askEditableMentor(
   currentSql = '',
   schema = '',
   databaseError = '',
+  databaseName = 'EditableDB',
 ) {
   return postTutor<MentorConversationItem>('/api/mentor-chat', {
     question,
     current_sql: currentSql,
     schema,
     database_error: databaseError,
+    database_name: databaseName,
   });
 }
 

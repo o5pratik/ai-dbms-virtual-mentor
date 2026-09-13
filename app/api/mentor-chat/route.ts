@@ -77,6 +77,7 @@ export async function POST(request: Request) {
       current_sql?: unknown;
       schema?: unknown;
       database_error?: unknown;
+      database_name?: unknown;
     };
     if (typeof payload.question !== 'string' || !payload.question.trim()) {
       return Response.json(
@@ -96,6 +97,10 @@ export async function POST(request: Request) {
       typeof payload.database_error === 'string'
         ? payload.database_error.slice(0, 2_000)
         : '';
+    const databaseName =
+      typeof payload.database_name === 'string'
+        ? payload.database_name.trim().slice(0, 80)
+        : 'EditableDB';
 
     let conversation: MentorConversationTurn[] = [];
     try {
@@ -119,6 +124,7 @@ export async function POST(request: Request) {
       schema,
       databaseError,
       conversation,
+      databaseName,
     );
 
     let id: number | null = null;

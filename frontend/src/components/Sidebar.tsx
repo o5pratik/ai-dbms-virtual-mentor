@@ -21,7 +21,10 @@ export type WorkspaceView =
   | 'history'
   | 'saved'
   | 'analytics'
-  | 'topics';
+  | 'topics'
+  | 'learn'
+  | 'team'
+  | 'help';
 
 const primaryNavigation: Array<{
   label: string;
@@ -87,15 +90,15 @@ export function Sidebar({
         </summary>
         <nav className="mt-1 space-y-0.5" aria-label="Additional tools">
           {secondaryNavigation.map(({ label, icon: Icon, view }) => (
-          <button
-            key={view}
-            type="button"
-            onClick={() => onNavigate(view)}
-            className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${activeView === view ? 'bg-[color:rgb(109_141_255_/_13%)] text-[var(--blue-bright)]' : 'text-[var(--muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]'}`}
-          >
-            <Icon size={15} /> {label}
-          </button>
-        ))}
+            <button
+              key={view}
+              type="button"
+              onClick={() => onNavigate(view)}
+              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${activeView === view ? 'bg-[color:rgb(109_141_255_/_13%)] text-[var(--blue-bright)]' : 'text-[var(--muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]'}`}
+            >
+              <Icon size={15} /> {label}
+            </button>
+          ))}
         </nav>
       </details>
     </aside>
