@@ -219,14 +219,14 @@ export function LearnPage() {
 const members = [
   {
     name: 'Pratik Raj',
-    registerNumber: 'Not provided',
+    registerNumber: '25BCE5425',
     image: '/team/pratik-raj.jpg',
     position: '50% 28%',
     scale: 'scale(1.35)',
   },
   {
     name: 'Aarnav Jain',
-    registerNumber: 'Not provided',
+    registerNumber: '25BCE5262',
     image: '/team/aarnav-jain.jpeg',
     position: '50% 20%',
     scale: 'scale(1)',
