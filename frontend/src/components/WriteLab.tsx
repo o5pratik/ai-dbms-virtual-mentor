@@ -504,7 +504,7 @@ function downloadLabReport(format: ReportFormat, report: LabReport) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-export function WriteLab() {
+export function WriteLab({ openErRequest = 0 }: { openErRequest?: number }) {
   const [sql, setSql] = useState(STARTER_SCRIPT);
   const [results, setResults] = useState<ResultSet[]>([]);
   const [schema, setSchema] = useState<SchemaObject[]>([]);
@@ -546,6 +546,10 @@ export function WriteLab() {
   const pendingRef = useRef(new Map<number, PendingRequest>());
   const requestIdRef = useRef(0);
   const lastSnapshotRef = useRef({ sql: '', databaseName: '' });
+
+  useEffect(() => {
+    if (openErRequest > 0) setActiveTab('er');
+  }, [openErRequest]);
 
   const stopWorker = useCallback((reason?: string) => {
     workerRef.current?.terminate();

@@ -114,6 +114,7 @@ export function MentorWorkspace({
   const [productivityLoading, setProductivityLoading] = useState(false);
   const [productivityLoaded, setProductivityLoaded] = useState(false);
   const [dayMode, setDayMode] = useState(false);
+  const [writeLabErRequest, setWriteLabErRequest] = useState(0);
 
   useEffect(() => {
     document.documentElement.dataset.theme = dayMode ? 'light' : 'dark';
@@ -437,6 +438,11 @@ export function MentorWorkspace({
       setSelectedTable('Student');
     setActiveView(view);
   };
+  const openEditableErDiagram = () => {
+    setPlaygroundMode('edit');
+    setActiveView('playground');
+    setWriteLabErRequest((request) => request + 1);
+  };
   const guideView = ['learn', 'team', 'help'].includes(activeView);
   const requestReport = (format: 'pdf' | 'doc' | 'txt') => {
     const dispatch = () =>
@@ -588,7 +594,11 @@ export function MentorWorkspace({
         </div>
       </header>
 
-      <Sidebar activeView={activeView} onNavigate={navigateTo} />
+      <Sidebar
+        activeView={activeView}
+        onNavigate={navigateTo}
+        onOpenErDiagram={openEditableErDiagram}
+      />
 
       {activeView === 'learn' ? (
         <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
@@ -746,12 +756,12 @@ export function MentorWorkspace({
               </div>
             </>
           ) : (
-            <WriteLab />
+            <WriteLab openErRequest={writeLabErRequest} />
           )}
         </section>
       ) : activeView === 'write-lab' ? (
         <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
-          <WriteLab />
+          <WriteLab openErRequest={writeLabErRequest} />
         </section>
       ) : activeView === 'schema-lab' ? (
         <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
