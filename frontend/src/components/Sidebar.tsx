@@ -8,6 +8,7 @@ import {
   DatabaseZap,
   LayoutDashboard,
   Save,
+  Workflow,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -30,8 +31,10 @@ const primaryNavigation: Array<{
   label: string;
   icon: LucideIcon;
   view?: WorkspaceView;
+  action?: 'open-er';
 }> = [
   { label: 'SQL Workspace', icon: Braces, view: 'playground' as const },
+  { label: 'ER Diagram', icon: Workflow, action: 'open-er' },
   { label: 'Learning Path', icon: BookOpen, view: 'topics' },
   { label: 'Dashboard', icon: LayoutDashboard, view: 'dashboard' },
 ];
@@ -52,9 +55,11 @@ const secondaryNavigation: Array<{
 export function Sidebar({
   activeView,
   onNavigate,
+  onOpenErDiagram,
 }: {
   activeView: WorkspaceView;
   onNavigate: (view: WorkspaceView) => void;
+  onOpenErDiagram: () => void;
 }) {
   return (
     <aside className="app-sidebar panel-shadow overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] px-3 py-4">
@@ -62,15 +67,18 @@ export function Sidebar({
         Start here
       </p>
       <nav className="mt-2 space-y-0.5" aria-label="Primary navigation">
-        {primaryNavigation.map(({ label, icon: Icon, view }) => {
-          const enabled = Boolean(view);
+        {primaryNavigation.map(({ label, icon: Icon, view, action }) => {
+          const enabled = Boolean(view || action);
           const active = view === activeView;
           return (
             <button
               key={label}
               type="button"
               disabled={!enabled}
-              onClick={() => view && onNavigate(view)}
+              onClick={() => {
+                if (action === 'open-er') onOpenErDiagram();
+                else if (view) onNavigate(view);
+              }}
               title={enabled ? label : `${label} — coming in a later phase`}
               className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-sm font-medium transition-colors ${active ? 'bg-[color:rgb(109_141_255_/_13%)] text-[var(--blue-bright)]' : enabled ? 'text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]' : 'cursor-not-allowed text-[var(--muted)] opacity-55'}`}
             >
