@@ -221,8 +221,9 @@ const members = [
     name: 'Pratik Raj',
     registerNumber: '25BCE5425',
     image: '/team/pratik-raj.jpg',
-    position: '50% 28%',
-    scale: 'scale(1.35)',
+    position: 'left bottom',
+    scale: 'scale(2.2)',
+    origin: 'top left',
   },
   {
     name: 'Aarnav Jain',
@@ -230,6 +231,7 @@ const members = [
     image: '/team/aarnav-jain.jpeg',
     position: '50% 20%',
     scale: 'scale(1)',
+    origin: 'center',
   },
 ];
 
@@ -248,7 +250,7 @@ export function TeamPage() {
               key={member.name}
               className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
             >
-              <div className="relative aspect-[16/10] overflow-hidden bg-[var(--surface-muted)]">
+              <div className="relative aspect-[4/5] overflow-hidden bg-[var(--surface-muted)]">
                 <Image
                   src={member.image}
                   alt={`Photograph of ${member.name}`}
@@ -258,6 +260,7 @@ export function TeamPage() {
                   style={{
                     objectPosition: member.position,
                     transform: member.scale,
+                    transformOrigin: member.origin,
                   }}
                 />
               </div>
