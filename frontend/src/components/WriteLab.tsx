@@ -2,6 +2,7 @@
 
 import Editor from '@monaco-editor/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 import {
   Award,
   AlertTriangle,
@@ -19,6 +20,7 @@ import {
   Eye,
   FileCode2,
   FileUp,
+  GripHorizontal,
   HardDrive,
   Lightbulb,
   MessageSquareText,
@@ -1653,8 +1655,18 @@ LIMIT 100;`;
         </span>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-rows-[minmax(280px,1fr)_minmax(220px,0.75fr)] overflow-hidden">
-        <div className="min-h-0 overflow-hidden bg-[#0b1019]">
+      <Group
+        id="sql-editor-results"
+        orientation="vertical"
+        className="min-h-0 flex-1 overflow-hidden"
+        defaultLayout={{ editor: 58, results: 42 }}
+      >
+        <Panel
+          id="editor"
+          defaultSize="58%"
+          minSize="220px"
+          className="min-h-0 overflow-hidden bg-[#0b1019]"
+        >
           <Editor
             height="100%"
             defaultLanguage="sql"
@@ -1696,9 +1708,26 @@ LIMIT 100;`;
               renderLineHighlight: 'all',
             }}
           />
-        </div>
+        </Panel>
 
-        <div className="flex min-h-0 flex-col border-t border-[var(--border)] bg-[var(--surface)]">
+        <Separator
+          id="editor-results-resize-handle"
+          aria-label="Resize SQL editor and results"
+          title="Drag up or down to resize the results panel"
+          className="group/resize relative z-20 flex h-2 cursor-row-resize items-center justify-center border-y border-[var(--border)] bg-[#0a0f17] outline-none transition-colors hover:border-[var(--blue)] hover:bg-[color:rgb(109_141_255_/_10%)] focus-visible:border-[var(--blue-bright)] focus-visible:bg-[color:rgb(109_141_255_/_14%)]"
+        >
+          <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--border)] transition-colors group-hover/resize:bg-[var(--blue)]" />
+          <span className="relative flex h-5 w-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-raised)] text-[var(--muted)] shadow-sm transition-colors group-hover/resize:border-[var(--blue)] group-hover/resize:text-[var(--blue-bright)]">
+            <GripHorizontal size={15} />
+          </span>
+        </Separator>
+
+        <Panel
+          id="results"
+          defaultSize="42%"
+          minSize="160px"
+          className="flex min-h-0 flex-col bg-[var(--surface)]"
+        >
           <div
             className="flex h-11 shrink-0 items-center gap-5 border-b border-[var(--border)] px-4"
             role="tablist"
@@ -2123,8 +2152,8 @@ LIMIT 100;`;
           <div className="shrink-0 border-t border-[var(--border)] px-4 py-2 text-xs text-[var(--muted)]">
             {message}
           </div>
-        </div>
-      </div>
+        </Panel>
+      </Group>
     </>
   );
 }

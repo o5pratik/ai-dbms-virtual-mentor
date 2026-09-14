@@ -371,6 +371,10 @@ export function HelpPage() {
                   ['Run selection', 'Executes only the highlighted SQL.'],
                   ['Output', 'Displays columns and rows returned by queries.'],
                   [
+                    'Resize handle',
+                    'Drag the divider above Output up or down to change its height.',
+                  ],
+                  [
                     'ER Diagram',
                     'Shows tables and declared foreign-key links.',
                   ],
