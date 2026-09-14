@@ -109,7 +109,7 @@ type WriteLabMentorContext = {
   databaseName: string;
 };
 
-const STARTER_SCRIPT = `-- Safe to run again: existing tables and rows are preserved.
+const EMPLOYEE_SETUP_SQL = `-- Shared sample data used by this program.
 CREATE TABLE IF NOT EXISTS Department (
   department_id INTEGER PRIMARY KEY,
   department_name TEXT NOT NULL UNIQUE
@@ -125,12 +125,18 @@ CREATE TABLE IF NOT EXISTS Employee (
 
 INSERT OR IGNORE INTO Department (department_id, department_name)
 VALUES (1, 'Engineering'),
-       (2, 'Design');
+       (2, 'Design'),
+       (3, 'Marketing');
 
 INSERT OR IGNORE INTO Employee (employee_id, name, salary, department_id)
 VALUES (1, 'Rahul', 45000, 1),
        (2, 'Priya', 52000, 2),
-       (3, 'Aman', 48000, 1);
+       (3, 'Aman', 48000, 1),
+       (4, 'Neha', 56000, 2),
+       (5, 'Vikram', 41000, 1);`;
+
+const STARTER_SCRIPT = `-- Safe to run again: existing tables and rows are preserved.
+${EMPLOYEE_SETUP_SQL}
 
 SELECT e.name, e.salary, d.department_name
 FROM Employee AS e
@@ -144,21 +150,228 @@ const LEGACY_STARTER_SCRIPT = STARTER_SCRIPT.replaceAll(' IF NOT EXISTS', '')
     '-- Create two related tables, insert data, and run the program.',
   );
 
-const EXAMPLES = [
-  { label: 'Create + insert', sql: STARTER_SCRIPT },
+const EXAMPLE_GROUPS = [
   {
-    label: 'Update rows',
-    sql: `UPDATE Employee\nSET salary = salary + 2500\nWHERE department_id = 1;\n\nSELECT * FROM Employee ORDER BY salary DESC;`,
+    category: 'SQL basics',
+    examples: [
+      {
+        label: 'Create tables + insert rows',
+        description: 'Build two related tables and display their data.',
+        sql: STARTER_SCRIPT,
+      },
+      {
+        label: 'Filter, sort + limit',
+        description: 'Find the three highest salaries above a value.',
+        sql: `${EMPLOYEE_SETUP_SQL}
+
+SELECT name, salary
+FROM Employee
+WHERE salary >= 45000
+ORDER BY salary DESC
+LIMIT 3;`,
+      },
+      {
+        label: 'CASE expression',
+        description: 'Create a calculated salary band for every row.',
+        sql: `${EMPLOYEE_SETUP_SQL}
+
+SELECT name,
+       salary,
+       CASE
+         WHEN salary >= 55000 THEN 'Senior band'
+         WHEN salary >= 45000 THEN 'Mid band'
+         ELSE 'Entry band'
+       END AS salary_band
+FROM Employee
+ORDER BY salary DESC;`,
+      },
+    ],
   },
   {
-    label: 'Transaction',
-    sql: `BEGIN;\nUPDATE Employee SET salary = 60000 WHERE employee_id = 2;\nSELECT * FROM Employee WHERE employee_id = 2;\nROLLBACK;\nSELECT * FROM Employee WHERE employee_id = 2;`,
+    category: 'Joins + analysis',
+    examples: [
+      {
+        label: 'INNER JOIN',
+        description: 'Match each employee to their department.',
+        sql: `${EMPLOYEE_SETUP_SQL}
+
+SELECT e.employee_id, e.name, d.department_name
+FROM Employee AS e
+INNER JOIN Department AS d
+  ON d.department_id = e.department_id
+ORDER BY d.department_name, e.name;`,
+      },
+      {
+        label: 'LEFT JOIN + count',
+        description: 'Keep departments that currently have no employees.',
+        sql: `${EMPLOYEE_SETUP_SQL}
+
+SELECT d.department_name,
+       COUNT(e.employee_id) AS employee_count
+FROM Department AS d
+LEFT JOIN Employee AS e
+  ON e.department_id = d.department_id
+GROUP BY d.department_id, d.department_name
+ORDER BY employee_count DESC, d.department_name;`,
+      },
+      {
+        label: 'GROUP BY + HAVING',
+        description: 'Compare department averages and filter the groups.',
+        sql: `${EMPLOYEE_SETUP_SQL}
+
+SELECT d.department_name,
+       ROUND(AVG(e.salary), 2) AS average_salary,
+       COUNT(*) AS team_size
+FROM Employee AS e
+JOIN Department AS d
+  ON d.department_id = e.department_id
+GROUP BY d.department_id, d.department_name
+HAVING AVG(e.salary) >= 45000
+ORDER BY average_salary DESC;`,
+      },
+      {
+        label: 'Subquery',
+        description: 'Return employees earning above the overall average.',
+        sql: `${EMPLOYEE_SETUP_SQL}
+
+SELECT name, salary
+FROM Employee
+WHERE salary > (SELECT AVG(salary) FROM Employee)
+ORDER BY salary DESC;`,
+      },
+      {
+        label: 'CTE + window rank',
+        description: 'Rank salaries inside each department.',
+        sql: `${EMPLOYEE_SETUP_SQL}
+
+WITH ranked_employees AS (
+  SELECT e.name,
+         d.department_name,
+         e.salary,
+         DENSE_RANK() OVER (
+           PARTITION BY e.department_id
+           ORDER BY e.salary DESC
+         ) AS salary_rank
+  FROM Employee AS e
+  JOIN Department AS d
+    ON d.department_id = e.department_id
+)
+SELECT *
+FROM ranked_employees
+ORDER BY department_name, salary_rank;`,
+      },
+    ],
   },
   {
-    label: 'Index + plan',
-    sql: `CREATE INDEX IF NOT EXISTS idx_employee_department ON Employee(department_id);\nPRAGMA optimize;\nEXPLAIN QUERY PLAN\nSELECT * FROM Employee WHERE department_id = 1;`,
+    category: 'Change data safely',
+    examples: [
+      {
+        label: 'UPDATE rows',
+        description: 'Apply a targeted raise and inspect the result.',
+        sql: `${EMPLOYEE_SETUP_SQL}
+
+UPDATE Employee
+SET salary = salary + 2500
+WHERE department_id = 1;
+
+SELECT employee_id, name, salary
+FROM Employee
+WHERE department_id = 1
+ORDER BY salary DESC;`,
+      },
+      {
+        label: 'DELETE rows',
+        description: 'Remove completed tasks without touching other rows.',
+        sql: `CREATE TABLE IF NOT EXISTS TaskDemo (
+  task_id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('open', 'done'))
+);
+
+INSERT OR IGNORE INTO TaskDemo (task_id, title, status)
+VALUES (1, 'Design schema', 'done'),
+       (2, 'Write queries', 'open'),
+       (3, 'Review output', 'done');
+
+DELETE FROM TaskDemo
+WHERE status = 'done';
+
+SELECT * FROM TaskDemo ORDER BY task_id;`,
+      },
+      {
+        label: 'Transaction + rollback',
+        description: 'Try a transfer, inspect it, then undo the change.',
+        sql: `CREATE TABLE IF NOT EXISTS WalletDemo (
+  wallet_id INTEGER PRIMARY KEY,
+  owner TEXT NOT NULL,
+  balance REAL NOT NULL CHECK (balance >= 0)
+);
+
+INSERT OR IGNORE INTO WalletDemo (wallet_id, owner, balance)
+VALUES (1, 'Asha', 1000), (2, 'Kabir', 600);
+
+BEGIN;
+UPDATE WalletDemo SET balance = balance - 200 WHERE wallet_id = 1;
+UPDATE WalletDemo SET balance = balance + 200 WHERE wallet_id = 2;
+SELECT 'Before rollback' AS stage, * FROM WalletDemo;
+ROLLBACK;
+
+SELECT 'After rollback' AS stage, * FROM WalletDemo;`,
+      },
+    ],
   },
-];
+  {
+    category: 'Schema + performance',
+    examples: [
+      {
+        label: 'Constraints',
+        description: 'Use primary, unique, default, and check constraints.',
+        sql: `CREATE TABLE IF NOT EXISTS CourseDemo (
+  course_id INTEGER PRIMARY KEY,
+  course_code TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  credits INTEGER NOT NULL DEFAULT 3 CHECK (credits BETWEEN 1 AND 6)
+);
+
+INSERT OR IGNORE INTO CourseDemo (course_id, course_code, title, credits)
+VALUES (1, 'DBMS101', 'Database Fundamentals', 4),
+       (2, 'SQL201', 'Advanced SQL', 3);
+
+SELECT * FROM CourseDemo ORDER BY course_code;`,
+      },
+      {
+        label: 'Create + query a view',
+        description: 'Save a reusable query as a database view.',
+        sql: `${EMPLOYEE_SETUP_SQL}
+
+DROP VIEW IF EXISTS HighEarners;
+CREATE VIEW HighEarners AS
+SELECT e.name, e.salary, d.department_name
+FROM Employee AS e
+JOIN Department AS d
+  ON d.department_id = e.department_id
+WHERE e.salary >= 50000;
+
+SELECT * FROM HighEarners ORDER BY salary DESC;`,
+      },
+      {
+        label: 'Index + query plan',
+        description: 'Create an index and inspect how SQLite uses it.',
+        sql: `${EMPLOYEE_SETUP_SQL}
+
+CREATE INDEX IF NOT EXISTS idx_employee_department
+ON Employee(department_id);
+
+PRAGMA optimize;
+
+EXPLAIN QUERY PLAN
+SELECT *
+FROM Employee
+WHERE department_id = 1;`,
+      },
+    ],
+  },
+] as const;
 
 const CHALLENGES = [
   {
@@ -2647,31 +2860,64 @@ export function WriteLabContextPanel() {
       <details className="group mt-3 overflow-hidden rounded-xl border border-[var(--border)]">
         <summary className="flex cursor-pointer list-none items-center gap-2 p-3.5 text-sm font-semibold text-[var(--muted-bright)] hover:bg-[var(--surface-raised)]">
           <FileCode2 size={15} className="text-[var(--blue-bright)]" />
-          Starter examples
+          Query library
+          <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)]">
+            {EXAMPLE_GROUPS.reduce(
+              (total, group) => total + group.examples.length,
+              0,
+            )}{' '}
+            programs
+          </span>
           <ChevronDown
             size={14}
             className="ml-auto text-[var(--muted)] transition group-open:rotate-180"
           />
         </summary>
-        <div className="space-y-2 border-t border-[var(--border)] p-3">
-          {EXAMPLES.map((example) => (
-            <button
-              key={example.label}
-              type="button"
-              onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent('write-lab-example', { detail: example.sql }),
-                )
-              }
-              className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] bg-[#0b1018] px-3 py-2.5 text-left text-sm text-[var(--muted-bright)] hover:border-[var(--border-bright)] hover:text-[var(--text)]"
-            >
-              <FileCode2 size={14} className="text-[var(--blue-bright)]" />
-              {example.label}
-            </button>
+        <div className="space-y-4 border-t border-[var(--border)] p-3">
+          {EXAMPLE_GROUPS.map((group) => (
+            <div key={group.category}>
+              <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                {group.category}
+              </p>
+              <div className="space-y-2">
+                {group.examples.map((example) => (
+                  <button
+                    key={example.label}
+                    type="button"
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent('write-lab-example', {
+                          detail: example.sql,
+                        }),
+                      )
+                    }
+                    className="group/example flex w-full items-start gap-2.5 rounded-lg border border-[var(--border)] bg-[#0b1018] px-3 py-2.5 text-left hover:border-[var(--border-bright)]"
+                  >
+                    <FileCode2
+                      size={14}
+                      className="mt-0.5 shrink-0 text-[var(--blue-bright)]"
+                    />
+                    <span className="min-w-0">
+                      <strong className="block text-sm font-semibold text-[var(--muted-bright)] group-hover/example:text-[var(--text)]">
+                        {example.label}
+                      </strong>
+                      <span className="mt-0.5 block text-[11px] leading-4 text-[var(--muted)]">
+                        {example.description}
+                      </span>
+                    </span>
+                    <ArrowRight
+                      size={13}
+                      className="ml-auto mt-0.5 shrink-0 text-[var(--muted)] transition group-hover/example:translate-x-0.5 group-hover/example:text-[var(--blue-bright)]"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
           <p className="px-1 pt-1 text-xs leading-5 text-[var(--muted)]">
-            SQLite only. Your editable database is isolated and restored on this
-            device.
+            Select a program to replace the editor contents, then choose Run
+            script. Every example prepares the data it needs and is safe inside
+            your isolated SQLite database.
           </p>
         </div>
       </details>
