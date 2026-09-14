@@ -248,7 +248,7 @@ export function TeamPage() {
           {members.map((member) => (
             <article
               key={member.name}
-              className="w-full max-w-72 justify-self-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+              className="w-full max-w-64 justify-self-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
             >
               <div className="relative aspect-[4/5] overflow-hidden bg-[var(--surface-muted)]">
                 <Image
