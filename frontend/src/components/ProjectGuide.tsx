@@ -244,11 +244,11 @@ export function TeamPage() {
           title="Team Apex"
           description="ApexDB Mentor was designed and developed as an interactive DBMS learning environment for practising SQL safely."
         />
-        <section className="grid gap-5 py-8 md:grid-cols-2">
+        <section className="mx-auto grid max-w-3xl gap-5 py-8 sm:grid-cols-2">
           {members.map((member) => (
             <article
               key={member.name}
-              className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+              className="w-full max-w-72 justify-self-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
             >
               <div className="relative aspect-[4/5] overflow-hidden bg-[var(--surface-muted)]">
                 <Image
