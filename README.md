@@ -1,8 +1,17 @@
 # ApexDB Mentor
 
-ApexDB Mentor is Team Apex's modern SQL learning workspace. Phase 29 opens directly in a clean, simplified editable SQL workspace where students can write programs, run them, inspect output, and see only their program's tables in the ER diagram. Secondary navigation, database actions, challenges, and starter examples stay available without crowding the editor. Phase 27 added contextual next-question guidance to every AI Mentor answer, persisted with each account-isolated conversation. ChatGPT sign-in and account-isolated query history, saved SQL, lesson completion, and challenge progress let students safely share one deployment. The protected CollegeDB remains available as an optional read-only reference.
+A SQL learning workspace built by Team Apex. Students can write and run SQLite programs, inspect results and ER diagrams, work through guided challenges, and ask a context-aware AI mentor. A separate CollegeDB is available for read-only reference queries.
 
-The supplied HTML prototype informed the dark IDE-style layout. Every workspace item is now connected to a working product view.
+[Open the hosted workspace](https://apexdb-mentor-team-apex.pratik02raj.chatgpt.site/) (ChatGPT sign-in required), or follow the [local setup](#prerequisites) below. The hosted page was reachable when this README was updated; it requires sign-in before the workspace can be used.
+
+## At a glance
+
+- **Editable SQL lab:** run multi-statement scripts in a browser-isolated SQLite workspace and inspect the resulting tables.
+- **Learning tools:** schema exploration, ER diagrams, guided SQL challenges, query plans, and progress tracking.
+- **AI assistance:** optional Groq-backed explanations with a built-in fallback; suggested SQL is reviewed before it runs.
+- **Project structure:** React/TypeScript frontend, local FastAPI backend, and hosted API routes. See [the architecture notes](docs/architecture.md) for the request flow and security boundary.
+
+The detailed architecture, setup, API reference, and development history follow.
 
 ## Architecture
 
