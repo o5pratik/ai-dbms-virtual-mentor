@@ -63,6 +63,7 @@ import {
   ProductivityContextPanel,
   ProductivityWorkspace,
 } from './ProductivityWorkspace';
+import { QuizContextPanel, QuizWorkspace } from './QuizWorkspace';
 import { ResultsPanel, type ResultTab } from './ResultsPanel';
 import {
   SchemaContextPanel,
@@ -438,6 +439,7 @@ export function MentorWorkspace({
     setActiveView(view);
   };
   const guideView = ['learn', 'team', 'help'].includes(activeView);
+  const quizView = activeView === 'quiz';
   const requestReport = (format: 'pdf' | 'doc' | 'txt') => {
     const dispatch = () =>
       window.dispatchEvent(
@@ -483,10 +485,12 @@ export function MentorWorkspace({
           <div className="hidden h-5 w-px bg-[var(--border)] sm:block" />
           <div className="hidden items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-xs text-[var(--muted-bright)] sm:flex">
             <span
-              className={`h-1.5 w-1.5 rounded-full ${guideView ? 'bg-[var(--violet)]' : activeView === 'write-lab' || activeView === 'editable-er' || (activeView === 'playground' && playgroundMode === 'edit') ? 'bg-[var(--green)]' : 'bg-[var(--blue)]'}`}
+              className={`h-1.5 w-1.5 rounded-full ${guideView || quizView ? 'bg-[var(--violet)]' : activeView === 'write-lab' || activeView === 'editable-er' || (activeView === 'playground' && playgroundMode === 'edit') ? 'bg-[var(--green)]' : 'bg-[var(--blue)]'}`}
             />
             {guideView
               ? 'Project guide'
+              : quizView
+                ? 'GATE practice'
               : activeView === 'write-lab' ||
                   activeView === 'editable-er' ||
                   (activeView === 'playground' && playgroundMode === 'edit')
@@ -603,6 +607,10 @@ export function MentorWorkspace({
       ) : activeView === 'help' ? (
         <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
           <HelpPage />
+        </section>
+      ) : activeView === 'quiz' ? (
+        <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
+          <QuizWorkspace />
         </section>
       ) : activeView === 'playground' ? (
         <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
@@ -821,6 +829,8 @@ export function MentorWorkspace({
           activeView={activeView as 'learn' | 'team' | 'help'}
           onNavigate={navigateTo}
         />
+      ) : activeView === 'quiz' ? (
+        <QuizContextPanel />
       ) : activeView === 'playground' ? (
         playgroundMode === 'edit' ? (
           <WriteLabContextPanel />

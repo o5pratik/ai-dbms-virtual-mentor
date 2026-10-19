@@ -11,6 +11,7 @@ The supplied HTML prototype informed the dark IDE-style layout. Every workspace 
 - **Hosted backend:** same-origin Vinext API route on Cloudflare Workers
 - **Database:** local SQLite (`database/college.db`) and hosted D1/SQLite CollegeDB
 - **AI tutor:** optional server-side Groq integration with a deterministic built-in tutor fallback
+- **AI GATE quiz:** topic-based, original GATE-style DBMS MCQs with selectable difficulty, automatic scoring, solution explanations, and a built-in fallback bank
 - **Schema intelligence:** entity, column, primary-key, foreign-key, constraint, and cardinality analysis
 - **Schema Lab:** analyze custom `CREATE TABLE` statements and explore the result as table cards or an interactive ER diagram
 - **Query intelligence:** deterministic logical execution plans with clickable SQL stages, complexity, concepts, and learning tips
@@ -111,6 +112,7 @@ Only read-only learning queries are accepted. Destructive statements return a sa
 - `POST /api/analyze-query` accepts `query` and returns its logical execution flow.
 - `POST /api/analyze-schema` accepts SQL DDL and returns detected entities, attributes, constraints, and relationships.
 - `POST /api/query-plan` accepts a read-only query and returns SQLite planner operations.
+- `POST /api/quiz` accepts a DBMS topic, difficulty, and question count, then returns original GATE-style MCQs with answers and explanations.
 - `GET /api/schema` returns tables, columns, constraints, row counts, and relationships.
 - `GET/DELETE /api/history` lists or clears the latest 100 query attempts.
 - `GET/POST/DELETE /api/saved` manages reusable read-only queries.
@@ -163,3 +165,4 @@ npm run build
 27. **Completed — Phase 28:** editable-first landing, simplified navigation and actions, prioritized Output and ER Diagram, and automatic ER refresh after table changes.
 28. **Completed — Phase 29:** clean program-scoped SQLite workspace whose ER diagram contains only the learner's tables, while CollegeDB remains isolated for reference and challenge grading.
 29. **Completed — Phase 30:** rerunnable starter SQL that preserves existing tables and rows, plus automatic upgrade of the earlier starter draft.
+30. **Completed — Phase 31:** AI-generated GATE-style DBMS practice quizzes with topic and difficulty controls, automatic scoring, explanations, and offline fallback questions.

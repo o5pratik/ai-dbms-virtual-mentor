@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  BrainCircuit,
   BookOpen,
   Boxes,
   Braces,
@@ -24,6 +25,7 @@ export type WorkspaceView =
   | 'saved'
   | 'analytics'
   | 'topics'
+  | 'quiz'
   | 'learn'
   | 'team'
   | 'help';
@@ -34,6 +36,7 @@ const primaryNavigation: Array<{
   view?: WorkspaceView;
 }> = [
   { label: 'SQL Workspace', icon: Braces, view: 'playground' as const },
+  { label: 'AI Quiz', icon: BrainCircuit, view: 'quiz' },
   { label: 'ER Diagram', icon: Workflow, view: 'editable-er' },
   { label: 'Learning Path', icon: BookOpen, view: 'topics' },
   { label: 'Dashboard', icon: LayoutDashboard, view: 'dashboard' },
