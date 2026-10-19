@@ -42,6 +42,23 @@ export type MentorConversationItem = MentorAnswerResponse & {
   question: string;
   created_at: string;
 };
+export type GateQuizDifficulty = 'Foundation' | 'Standard' | 'Challenging';
+export type GateQuizQuestion = {
+  id: string;
+  question: string;
+  options: string[];
+  correct_index: number;
+  explanation: string;
+  concept: string;
+};
+export type GateQuizResponse = {
+  title: string;
+  topic: string;
+  difficulty: GateQuizDifficulty;
+  questions: GateQuizQuestion[];
+  source: TutorSource;
+  note: string;
+};
 
 export type SchemaColumn = {
   name: string;
@@ -235,6 +252,18 @@ export function askEditableMentor(
     schema,
     database_error: databaseError,
     database_name: databaseName,
+  });
+}
+
+export function generateGateQuiz(
+  topic: string,
+  difficulty: GateQuizDifficulty,
+  count: number,
+) {
+  return postTutor<GateQuizResponse>('/api/quiz', {
+    topic,
+    difficulty,
+    count,
   });
 }
 
