@@ -319,6 +319,10 @@ const helpSteps = [
     text: 'Describe the doubt in the right panel. Apex AI receives the current SQL, schema, and latest error, then returns focused steps and an optional SQL example that you can place in the editor.',
   },
   {
+    title: 'Practise with the AI Quiz',
+    text: 'Open AI Quiz from the left navigation, enter a DBMS topic, choose the difficulty and question count, then generate a fresh GATE-style quiz. Submit all answers to see your score and step-by-step explanations.',
+  },
+  {
     title: 'Save or download your work',
     text: 'ProgramDB is recovered locally. Use Download in the top bar to create a complete PDF, document, or text report containing input SQL, processing steps, messages, tables, schema, and final output.',
   },
@@ -382,6 +386,10 @@ export function HelpPage() {
                   [
                     'Ask Apex AI',
                     'Explains the current SQL or helps correct an error.',
+                  ],
+                  [
+                    'AI Quiz',
+                    'Generates original GATE-style DBMS questions, scores your answers, and explains each solution.',
                   ],
                   [
                     'Download',
