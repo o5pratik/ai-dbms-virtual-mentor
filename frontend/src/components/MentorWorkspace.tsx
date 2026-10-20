@@ -52,6 +52,7 @@ import {
 } from '../services/api';
 import { formatSql } from '../services/sql-intelligence';
 import { ErDiagram } from './ErDiagram';
+import { LeaderboardContextPanel, LeaderboardWorkspace } from './Leaderboard';
 import { MentorPanel, type MentorView } from './MentorPanel';
 import {
   GuideContextPanel,
@@ -440,7 +441,10 @@ export function MentorWorkspace({
     setActiveView(view);
   };
   const guideView = ['learn', 'team', 'help'].includes(activeView);
-  const quizView = activeView === 'quiz' || activeView === 'pyq';
+  const quizView =
+    activeView === 'quiz' ||
+    activeView === 'pyq' ||
+    activeView === 'leaderboard';
   const requestReport = (format: 'pdf' | 'doc' | 'txt') => {
     const dispatch = () =>
       window.dispatchEvent(
@@ -491,9 +495,11 @@ export function MentorWorkspace({
             {guideView
               ? 'Project guide'
               : quizView
-                ? activeView === 'pyq'
-                  ? 'PYQ question bank'
-                  : 'AI GATE practice'
+                ? activeView === 'leaderboard'
+                  ? 'Student rankings'
+                  : activeView === 'pyq'
+                    ? 'PYQ question bank'
+                    : 'AI GATE practice'
                 : activeView === 'write-lab' ||
                     activeView === 'editable-er' ||
                     (activeView === 'playground' && playgroundMode === 'edit')
@@ -620,6 +626,10 @@ export function MentorWorkspace({
       ) : activeView === 'pyq' ? (
         <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
           <PyqBankWorkspace />
+        </section>
+      ) : activeView === 'leaderboard' ? (
+        <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
+          <LeaderboardWorkspace />
         </section>
       ) : activeView === 'playground' ? (
         <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
@@ -842,6 +852,8 @@ export function MentorWorkspace({
         <QuizContextPanel />
       ) : activeView === 'pyq' ? (
         <PyqBankContextPanel />
+      ) : activeView === 'leaderboard' ? (
+        <LeaderboardContextPanel />
       ) : activeView === 'playground' ? (
         playgroundMode === 'edit' ? (
           <WriteLabContextPanel />
