@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Shuffle,
   Target,
+  Trophy,
 } from 'lucide-react';
 
 import {
@@ -18,6 +19,7 @@ import {
   GATE_PYQ_TOPICS,
   type PyqQuestion,
 } from '../data/gate-pyq-bank';
+import { submitLeaderboardScore } from '../services/api';
 
 function shuffled<T>(items: T[]) {
   return [...items].sort(() => Math.random() - 0.5);
@@ -29,6 +31,9 @@ export function PyqBankWorkspace() {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [limit, setLimit] = useState(12);
+  const [sessionSaved, setSessionSaved] = useState(false);
+  const [savingScore, setSavingScore] = useState(false);
+  const [scoreMessage, setScoreMessage] = useState('');
   const [order, setOrder] = useState(() =>
     GATE_PYQ_BANK.map((item) => item.id),
   );
@@ -58,6 +63,28 @@ export function PyqBankWorkspace() {
     setAnswers({});
     setChecked({});
     setLimit(12);
+    setSessionSaved(false);
+    setScoreMessage('');
+  };
+
+  const saveSession = async () => {
+    if (checkedIds.length < 3 || sessionSaved) return;
+    setSavingScore(true);
+    setScoreMessage('');
+    try {
+      const result = await submitLeaderboardScore({
+        mode: 'pyq-bank',
+        topic: topic === 'All topics' ? 'Mixed PYQ practice' : topic,
+        score,
+        total: checkedIds.length,
+      });
+      setSessionSaved(true);
+      setScoreMessage(`Saved · +${result.points} points`);
+    } catch {
+      setScoreMessage('Could not save this session. Please try again.');
+    } finally {
+      setSavingScore(false);
+    }
   };
 
   return (
@@ -111,7 +138,7 @@ export function PyqBankWorkspace() {
                 value={topic}
                 onChange={(event) => {
                   setTopic(event.target.value);
-                  setLimit(12);
+                  resetPractice();
                 }}
                 className="w-full appearance-none rounded-xl border border-[var(--border)] bg-[#090e16] py-2.5 pl-9 pr-8 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
               >
@@ -147,7 +174,7 @@ export function PyqBankWorkspace() {
                   type="button"
                   onClick={() => {
                     setTopic(item);
-                    setLimit(12);
+                    resetPractice();
                   }}
                   className={`rounded-full border px-3 py-1.5 text-xs transition ${topic === item ? 'border-[var(--blue)] bg-[color:rgb(109_141_255_/_13%)] text-[var(--text)]' : 'border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]'}`}
                 >
@@ -159,14 +186,38 @@ export function PyqBankWorkspace() {
         </section>
 
         {checkedIds.length ? (
-          <section className="mt-4 flex items-center justify-between rounded-2xl border border-[color:rgb(72_213_151_/_26%)] bg-[color:rgb(72_213_151_/_6%)] px-4 py-3">
+          <section className="mt-4 flex flex-col gap-3 rounded-2xl border border-[color:rgb(72_213_151_/_26%)] bg-[color:rgb(72_213_151_/_6%)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
               <BookOpenCheck size={17} className="text-[var(--green)]" />
-              Current score
+              <span>
+                Current score · {score}/{checkedIds.length} correct
+              </span>
             </div>
-            <strong className="text-[var(--green)]">
-              {score}/{checkedIds.length} correct
-            </strong>
+            <div className="flex items-center gap-3">
+              {scoreMessage ? (
+                <span className="text-xs text-[var(--muted-bright)]">
+                  {scoreMessage}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void saveSession()}
+                disabled={checkedIds.length < 3 || sessionSaved || savingScore}
+                title={
+                  checkedIds.length < 3
+                    ? 'Check at least three answers first'
+                    : 'Save this practice session to the leaderboard'
+                }
+                className="flex shrink-0 items-center gap-2 rounded-xl bg-[#f6c85f] px-3.5 py-2 text-xs font-bold text-[#1c1606] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                <Trophy size={14} />
+                {savingScore
+                  ? 'Saving…'
+                  : sessionSaved
+                    ? 'Saved'
+                    : 'Save to leaderboard'}
+              </button>
+            </div>
           </section>
         ) : null}
 
@@ -207,7 +258,7 @@ export function PyqBankWorkspace() {
                           <button
                             key={option}
                             type="button"
-                            disabled={isChecked}
+                            disabled={isChecked || sessionSaved}
                             onClick={() =>
                               setAnswers((current) => ({
                                 ...current,
@@ -247,7 +298,7 @@ export function PyqBankWorkspace() {
                       {!isChecked ? (
                         <button
                           type="button"
-                          disabled={selected === undefined}
+                          disabled={selected === undefined || sessionSaved}
                           onClick={() =>
                             setChecked((current) => ({
                               ...current,

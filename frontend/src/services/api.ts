@@ -59,6 +59,21 @@ export type GateQuizResponse = {
   source: TutorSource;
   note: string;
 };
+export type LeaderboardEntry = {
+  rank: number;
+  name: string;
+  points: number;
+  correct_answers: number;
+  total_questions: number;
+  quizzes_completed: number;
+  accuracy: number;
+  last_played_at: string;
+  is_current: boolean;
+};
+export type LeaderboardResponse = {
+  entries: LeaderboardEntry[];
+  current: LeaderboardEntry | null;
+};
 
 export type SchemaColumn = {
   name: string;
@@ -276,6 +291,23 @@ export async function getMentorConversation() {
 export async function clearMentorConversation() {
   return jsonRequest<{ success: boolean }>('/api/mentor-chat', {
     method: 'DELETE',
+  });
+}
+
+export async function getLeaderboard() {
+  return jsonRequest<LeaderboardResponse>('/api/leaderboard');
+}
+
+export async function submitLeaderboardScore(input: {
+  mode: 'ai-quiz' | 'pyq-bank';
+  topic: string;
+  score: number;
+  total: number;
+}) {
+  return jsonRequest<{ success: boolean; points: number }>('/api/leaderboard', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
   });
 }
 

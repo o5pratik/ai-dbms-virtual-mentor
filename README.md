@@ -22,6 +22,7 @@ The detailed architecture, setup, API reference, and development history follow.
 - **AI tutor:** optional server-side Groq integration with a deterministic built-in tutor fallback
 - **AI GATE quiz:** topic-based, original GATE-style DBMS MCQs with selectable difficulty, automatic scoring, solution explanations, and a built-in fallback bank
 - **Topic-wise PYQ practice:** a searchable, filterable bank of 38 paraphrased GATE-pattern DBMS questions with instant checking, explanations, shuffle, and progressive loading
+- **Student leaderboard:** account-linked rankings across AI quizzes and saved PYQ sessions, with points, accuracy, session counts, and a perfect-score bonus
 - **Schema intelligence:** entity, column, primary-key, foreign-key, constraint, and cardinality analysis
 - **Schema Lab:** analyze custom `CREATE TABLE` statements and explore the result as table cards or an interactive ER diagram
 - **Query intelligence:** deterministic logical execution plans with clickable SQL stages, complexity, concepts, and learning tips
@@ -123,6 +124,7 @@ Only read-only learning queries are accepted. Destructive statements return a sa
 - `POST /api/analyze-schema` accepts SQL DDL and returns detected entities, attributes, constraints, and relationships.
 - `POST /api/query-plan` accepts a read-only query and returns SQLite planner operations.
 - `POST /api/quiz` accepts a DBMS topic, difficulty, and question count, then returns original GATE-style MCQs with answers and explanations.
+- `GET/POST /api/leaderboard` reads student rankings or records a validated AI Quiz/PYQ practice score.
 - `GET /api/schema` returns tables, columns, constraints, row counts, and relationships.
 - `GET/DELETE /api/history` lists or clears the latest 100 query attempts.
 - `GET/POST/DELETE /api/saved` manages reusable read-only queries.
@@ -177,3 +179,4 @@ npm run build
 29. **Completed — Phase 30:** rerunnable starter SQL that preserves existing tables and rows, plus automatic upgrade of the earlier starter draft.
 30. **Completed — Phase 31:** AI-generated GATE-style DBMS practice quizzes with topic and difficulty controls, automatic scoring, explanations, and offline fallback questions.
 31. **Completed — Phase 32:** horizontal primary navigation and a topic-wise GATE PYQ practice bank with 38 questions, filters, search, shuffle, scoring, and explanations.
+32. **Completed — Phase 33:** shared student leaderboard with account-linked quiz submissions, points, accuracy, session totals, podium cards, and perfect-score bonuses.

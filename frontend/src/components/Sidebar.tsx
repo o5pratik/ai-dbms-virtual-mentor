@@ -10,6 +10,7 @@ import {
   LibraryBig,
   LayoutDashboard,
   Save,
+  Trophy,
   Workflow,
   type LucideIcon,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ export type WorkspaceView =
   | 'topics'
   | 'quiz'
   | 'pyq'
+  | 'leaderboard'
   | 'learn'
   | 'team'
   | 'help';
@@ -40,6 +42,7 @@ export const primaryNavigation: Array<{
   { label: 'SQL Workspace', icon: Braces, view: 'playground' as const },
   { label: 'AI Quiz', icon: BrainCircuit, view: 'quiz' },
   { label: 'Topic-wise PYQs', icon: LibraryBig, view: 'pyq' },
+  { label: 'Leaderboard', icon: Trophy, view: 'leaderboard' },
   { label: 'ER Diagram', icon: Workflow, view: 'editable-er' },
   { label: 'Learning Path', icon: BookOpen, view: 'topics' },
   { label: 'Dashboard', icon: LayoutDashboard, view: 'dashboard' },

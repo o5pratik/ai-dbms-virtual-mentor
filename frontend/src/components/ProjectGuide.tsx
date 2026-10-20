@@ -327,6 +327,10 @@ const helpSteps = [
     text: 'Open Topic-wise PYQs from the top navigation, choose a DBMS area, answer the paraphrased GATE-pattern questions, and check each explanation. Search, shuffle, or load more questions whenever needed.',
   },
   {
+    title: 'Climb the leaderboard',
+    text: 'AI Quiz scores are saved automatically. In Topic-wise PYQs, check at least three answers and choose Save to leaderboard. Open Leaderboard from the top navigation to compare points, accuracy, and completed sessions.',
+  },
+  {
     title: 'Save or download your work',
     text: 'ProgramDB is recovered locally. Use Download in the top bar to create a complete PDF, document, or text report containing input SQL, processing steps, messages, tables, schema, and final output.',
   },
@@ -398,6 +402,10 @@ export function HelpPage() {
                   [
                     'Topic-wise PYQs',
                     'Opens the filterable question bank with instant checking and explanations.',
+                  ],
+                  [
+                    'Leaderboard',
+                    'Ranks signed-in students by quiz points, correct answers, accuracy, and completed sessions.',
                   ],
                   [
                     'Download',
