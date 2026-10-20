@@ -63,6 +63,7 @@ import {
   ProductivityContextPanel,
   ProductivityWorkspace,
 } from './ProductivityWorkspace';
+import { PyqBankContextPanel, PyqBankWorkspace } from './PyqBank';
 import { QuizContextPanel, QuizWorkspace } from './QuizWorkspace';
 import { ResultsPanel, type ResultTab } from './ResultsPanel';
 import {
@@ -71,7 +72,7 @@ import {
   SchemaLoading,
 } from './SchemaExplorer';
 import { SchemaLab, SchemaLabContextPanel } from './SchemaLab';
-import { Sidebar, type WorkspaceView } from './Sidebar';
+import { Sidebar, TopNavigation, type WorkspaceView } from './Sidebar';
 import { SqlEditor } from './SqlEditor';
 import { WriteLab, WriteLabContextPanel } from './WriteLab';
 
@@ -439,7 +440,7 @@ export function MentorWorkspace({
     setActiveView(view);
   };
   const guideView = ['learn', 'team', 'help'].includes(activeView);
-  const quizView = activeView === 'quiz';
+  const quizView = activeView === 'quiz' || activeView === 'pyq';
   const requestReport = (format: 'pdf' | 'doc' | 'txt') => {
     const dispatch = () =>
       window.dispatchEvent(
@@ -490,12 +491,14 @@ export function MentorWorkspace({
             {guideView
               ? 'Project guide'
               : quizView
-                ? 'GATE practice'
-              : activeView === 'write-lab' ||
-                  activeView === 'editable-er' ||
-                  (activeView === 'playground' && playgroundMode === 'edit')
-                ? 'ProgramDB'
-                : 'CollegeDB reference'}
+                ? activeView === 'pyq'
+                  ? 'PYQ question bank'
+                  : 'AI GATE practice'
+                : activeView === 'write-lab' ||
+                    activeView === 'editable-er' ||
+                    (activeView === 'playground' && playgroundMode === 'edit')
+                  ? 'ProgramDB'
+                  : 'CollegeDB reference'}
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -594,6 +597,8 @@ export function MentorWorkspace({
         </div>
       </header>
 
+      <TopNavigation activeView={activeView} onNavigate={navigateTo} />
+
       <Sidebar activeView={activeView} onNavigate={navigateTo} />
 
       {activeView === 'learn' ? (
@@ -611,6 +616,10 @@ export function MentorWorkspace({
       ) : activeView === 'quiz' ? (
         <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
           <QuizWorkspace />
+        </section>
+      ) : activeView === 'pyq' ? (
+        <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
+          <PyqBankWorkspace />
         </section>
       ) : activeView === 'playground' ? (
         <section className="app-workspace flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#0b1018]">
@@ -831,6 +840,8 @@ export function MentorWorkspace({
         />
       ) : activeView === 'quiz' ? (
         <QuizContextPanel />
+      ) : activeView === 'pyq' ? (
+        <PyqBankContextPanel />
       ) : activeView === 'playground' ? (
         playgroundMode === 'edit' ? (
           <WriteLabContextPanel />
