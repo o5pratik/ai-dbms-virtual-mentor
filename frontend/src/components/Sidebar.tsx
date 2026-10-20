@@ -7,6 +7,7 @@ import {
   Clock3,
   Database,
   DatabaseZap,
+  LibraryBig,
   LayoutDashboard,
   Save,
   Workflow,
@@ -26,17 +27,19 @@ export type WorkspaceView =
   | 'analytics'
   | 'topics'
   | 'quiz'
+  | 'pyq'
   | 'learn'
   | 'team'
   | 'help';
 
-const primaryNavigation: Array<{
+export const primaryNavigation: Array<{
   label: string;
   icon: LucideIcon;
   view?: WorkspaceView;
 }> = [
   { label: 'SQL Workspace', icon: Braces, view: 'playground' as const },
   { label: 'AI Quiz', icon: BrainCircuit, view: 'quiz' },
+  { label: 'Topic-wise PYQs', icon: LibraryBig, view: 'pyq' },
   { label: 'ER Diagram', icon: Workflow, view: 'editable-er' },
   { label: 'Learning Path', icon: BookOpen, view: 'topics' },
   { label: 'Dashboard', icon: LayoutDashboard, view: 'dashboard' },
@@ -65,29 +68,10 @@ export function Sidebar({
   return (
     <aside className="app-sidebar panel-shadow overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] px-3 py-4">
       <p className="px-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-        Start here
+        Database tools
       </p>
-      <nav className="mt-2 space-y-0.5" aria-label="Primary navigation">
-        {primaryNavigation.map(({ label, icon: Icon, view }) => {
-          const enabled = Boolean(view);
-          const active = view === activeView;
-          return (
-            <button
-              key={label}
-              type="button"
-              disabled={!enabled}
-              onClick={() => view && onNavigate(view)}
-              title={enabled ? label : `${label} — coming in a later phase`}
-              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-sm font-medium transition-colors ${active ? 'bg-[color:rgb(109_141_255_/_13%)] text-[var(--blue-bright)]' : enabled ? 'text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]' : 'cursor-not-allowed text-[var(--muted)] opacity-55'}`}
-            >
-              <Icon size={15} />
-              <span>{label}</span>
-            </button>
-          );
-        })}
-      </nav>
       <details
-        className="group mt-5 border-t border-[var(--border)] pt-3"
+        className="group mt-2"
         open={secondaryNavigation.some(({ view }) => view === activeView)}
       >
         <summary className="cursor-pointer list-none rounded-lg px-2.5 py-2 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]">
@@ -108,5 +92,31 @@ export function Sidebar({
         </nav>
       </details>
     </aside>
+  );
+}
+
+export function TopNavigation({
+  activeView,
+  onNavigate,
+}: {
+  activeView: WorkspaceView;
+  onNavigate: (view: WorkspaceView) => void;
+}) {
+  return (
+    <nav
+      className="app-topnav flex items-center gap-1 overflow-x-auto border-b border-[var(--border)] bg-[color:rgb(11_16_24_/_96%)] px-3 py-1.5"
+      aria-label="Main workspace navigation"
+    >
+      {primaryNavigation.map(({ label, icon: Icon, view }) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => view && onNavigate(view)}
+          className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition ${activeView === view ? 'bg-[linear-gradient(135deg,rgb(109_141_255_/_20%),rgb(155_124_255_/_16%))] text-[var(--text)] ring-1 ring-[color:rgb(109_141_255_/_28%)]' : 'text-[var(--muted-bright)] hover:bg-[var(--surface-raised)] hover:text-[var(--text)]'}`}
+        >
+          <Icon size={14} /> {label}
+        </button>
+      ))}
+    </nav>
   );
 }

@@ -21,6 +21,7 @@ The detailed architecture, setup, API reference, and development history follow.
 - **Database:** local SQLite (`database/college.db`) and hosted D1/SQLite CollegeDB
 - **AI tutor:** optional server-side Groq integration with a deterministic built-in tutor fallback
 - **AI GATE quiz:** topic-based, original GATE-style DBMS MCQs with selectable difficulty, automatic scoring, solution explanations, and a built-in fallback bank
+- **Topic-wise PYQ practice:** a searchable, filterable bank of 38 paraphrased GATE-pattern DBMS questions with instant checking, explanations, shuffle, and progressive loading
 - **Schema intelligence:** entity, column, primary-key, foreign-key, constraint, and cardinality analysis
 - **Schema Lab:** analyze custom `CREATE TABLE` statements and explore the result as table cards or an interactive ER diagram
 - **Query intelligence:** deterministic logical execution plans with clickable SQL stages, complexity, concepts, and learning tips
@@ -175,3 +176,4 @@ npm run build
 28. **Completed — Phase 29:** clean program-scoped SQLite workspace whose ER diagram contains only the learner's tables, while CollegeDB remains isolated for reference and challenge grading.
 29. **Completed — Phase 30:** rerunnable starter SQL that preserves existing tables and rows, plus automatic upgrade of the earlier starter draft.
 30. **Completed — Phase 31:** AI-generated GATE-style DBMS practice quizzes with topic and difficulty controls, automatic scoring, explanations, and offline fallback questions.
+31. **Completed — Phase 32:** horizontal primary navigation and a topic-wise GATE PYQ practice bank with 38 questions, filters, search, shuffle, scoring, and explanations.

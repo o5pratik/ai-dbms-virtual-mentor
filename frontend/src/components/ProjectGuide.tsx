@@ -320,7 +320,11 @@ const helpSteps = [
   },
   {
     title: 'Practise with the AI Quiz',
-    text: 'Open AI Quiz from the left navigation, enter a DBMS topic, choose the difficulty and question count, then generate a fresh GATE-style quiz. Submit all answers to see your score and step-by-step explanations.',
+    text: 'Open AI Quiz from the top navigation, enter a DBMS topic, choose the difficulty and question count, then generate a fresh GATE-style quiz. Submit all answers to see your score and step-by-step explanations.',
+  },
+  {
+    title: 'Work through topic-wise PYQs',
+    text: 'Open Topic-wise PYQs from the top navigation, choose a DBMS area, answer the paraphrased GATE-pattern questions, and check each explanation. Search, shuffle, or load more questions whenever needed.',
   },
   {
     title: 'Save or download your work',
@@ -390,6 +394,10 @@ export function HelpPage() {
                   [
                     'AI Quiz',
                     'Generates original GATE-style DBMS questions, scores your answers, and explains each solution.',
+                  ],
+                  [
+                    'Topic-wise PYQs',
+                    'Opens the filterable question bank with instant checking and explanations.',
                   ],
                   [
                     'Download',

@@ -80,8 +80,8 @@ input:focus-visible,
   height: 100dvh;
   min-height: 0;
   grid-template-columns: 205px minmax(560px, 1fr) 300px;
-  grid-template-rows: 56px minmax(0, 1fr);
-  grid-template-areas: 'header header header' 'sidebar workspace mentor';
+  grid-template-rows: 56px 46px minmax(0, 1fr);
+  grid-template-areas: 'header header header' 'topnav topnav topnav' 'sidebar workspace mentor';
   overflow: hidden;
   background:
     radial-gradient(circle at 62% -20%, rgb(79 111 255 / 9%), transparent 35%),
@@ -92,6 +92,13 @@ input:focus-visible,
 }
 .app-sidebar {
   grid-area: sidebar;
+}
+.app-topnav {
+  grid-area: topnav;
+  scrollbar-width: none;
+}
+.app-topnav::-webkit-scrollbar {
+  display: none;
 }
 .app-workspace {
   grid-area: workspace;
@@ -136,7 +143,7 @@ html[data-theme='light'] .monaco-editor .margin {
 @media (max-width: 1120px) {
   .mentor-grid {
     grid-template-columns: 195px minmax(0, 1fr);
-    grid-template-areas: 'header header' 'sidebar workspace';
+    grid-template-areas: 'header header' 'topnav topnav' 'sidebar workspace';
     overflow: hidden;
   }
   .app-mentor {
@@ -154,7 +161,7 @@ html[data-theme='light'] .monaco-editor .margin {
     display: none;
   }
   .app-workspace {
-    height: calc(100dvh - 56px);
+    height: calc(100dvh - 102px);
     min-height: 0;
   }
 }
