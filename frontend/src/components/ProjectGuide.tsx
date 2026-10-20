@@ -282,13 +282,21 @@ export function TeamPage() {
           ))}
         </section>
         <section className="rounded-2xl border border-[color:rgb(109_141_255_/_28%)] bg-[linear-gradient(145deg,rgb(109_141_255_/_10%),rgb(155_124_255_/_7%))] p-6 text-center">
-          <GraduationCap
-            size={28}
-            className="mx-auto text-[var(--blue-bright)]"
-          />
-          <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
-            Guided By
-          </p>
+          <div className="relative mx-auto h-28 w-28 overflow-hidden rounded-2xl border-2 border-[color:rgb(109_141_255_/_45%)] bg-white shadow-lg shadow-[color:rgb(25_38_85_/_28%)]">
+            <Image
+              src="/team/dr-swaminathan-a.jpeg"
+              alt="Photograph of project guide Dr. Swaminathan A"
+              fill
+              sizes="112px"
+              className="object-cover"
+            />
+          </div>
+          <div className="mt-4 flex items-center justify-center gap-2 text-[var(--blue-bright)]">
+            <GraduationCap size={22} aria-hidden="true" />
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+              Guided By
+            </p>
+          </div>
           <h2 className="mt-2 text-2xl font-bold text-[var(--text)]">
             Dr. Swaminathan A
           </h2>
