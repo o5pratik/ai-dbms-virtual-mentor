@@ -331,12 +331,12 @@ const helpSteps = [
     text: 'Open AI Quiz from the top navigation, enter a DBMS topic, choose the difficulty and question count, then generate a fresh GATE-style quiz. Submit all answers to see your score and step-by-step explanations.',
   },
   {
-    title: 'Work through topic-wise PYQs',
-    text: 'Open Topic-wise PYQs from the top navigation, choose a DBMS area, answer the paraphrased GATE-pattern questions, and check each explanation. Search, shuffle, or load more questions whenever needed.',
+    title: 'Take a competitive exam',
+    text: 'Open Competitive Exam from the top navigation, choose a DBMS topic, select up to 50 questions, set a time limit, and start. Submit once to receive your score and review every explanation.',
   },
   {
     title: 'Climb the leaderboard',
-    text: 'AI Quiz scores are saved automatically. In Topic-wise PYQs, check at least three answers and choose Save to leaderboard. Open Leaderboard from the top navigation to compare points, accuracy, and completed sessions.',
+    text: 'AI practice and competitive exam scores are saved automatically. Open Leaderboard from the top navigation to compare points, accuracy, and completed sessions.',
   },
   {
     title: 'Save or download your work',
@@ -408,7 +408,7 @@ export function HelpPage() {
                     'Generates original GATE-style DBMS questions, scores your answers, and explains each solution.',
                   ],
                   [
-                    'Topic-wise PYQs',
+                    'Competitive Exam',
                     'Opens the filterable question bank with instant checking and explanations.',
                   ],
                   [

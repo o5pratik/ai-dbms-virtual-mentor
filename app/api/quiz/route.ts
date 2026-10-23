@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       : 'Standard';
     const requestedCount = Number(payload.count);
     const count = Number.isInteger(requestedCount)
-      ? Math.min(15, Math.max(3, requestedCount))
+      ? Math.min(50, Math.max(3, requestedCount))
       : 5;
 
     return Response.json(await generateGateQuiz(topic, difficulty, count));
