@@ -1,7 +1,4 @@
-import {
-  generateGateQuiz,
-  type GateQuizDifficulty,
-} from '@/lib/gate-quiz';
+import { generateGateQuiz, type GateQuizDifficulty } from '@/lib/gate-quiz';
 import {
   getAuthenticatedUser,
   unauthorizedResponse,
@@ -24,7 +21,9 @@ export async function POST(request: Request) {
       count?: unknown;
     };
     const topic =
-      typeof payload.topic === 'string' ? payload.topic.trim().slice(0, 120) : '';
+      typeof payload.topic === 'string'
+        ? payload.topic.trim().slice(0, 120)
+        : '';
     if (topic.length < 2) {
       return Response.json(
         { error: 'Enter a DBMS topic for the quiz.' },
@@ -39,7 +38,7 @@ export async function POST(request: Request) {
       : 'Standard';
     const requestedCount = Number(payload.count);
     const count = Number.isInteger(requestedCount)
-      ? Math.min(8, Math.max(3, requestedCount))
+      ? Math.min(15, Math.max(3, requestedCount))
       : 5;
 
     return Response.json(await generateGateQuiz(topic, difficulty, count));

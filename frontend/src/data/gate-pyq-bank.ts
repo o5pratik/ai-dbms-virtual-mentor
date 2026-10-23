@@ -5,9 +5,132 @@ export type PyqQuestion = {
   options: string[];
   correctIndex: number;
   explanation: string;
+  kind?: 'verified-pyq' | 'gate-style';
+  year?: number;
+  paper?: string;
+  marks?: 1 | 2;
+  sourceName?: string;
+  sourceUrl?: string;
 };
 
 export const GATE_PYQ_BANK: PyqQuestion[] = [
+  {
+    id: 'verified-sql-2021-01',
+    topic: 'SQL',
+    kind: 'verified-pyq',
+    year: 2021,
+    paper: 'Set 2 · MCQ',
+    marks: 2,
+    sourceName: 'GeeksforGeeks GATE SQL & Relational Algebra PYQs',
+    sourceUrl:
+      'https://www.geeksforgeeks.org/quizzes/gate-dbms-sql-relational-algebra-pyq-2010-to-2025/',
+    question:
+      'An Employee table is filtered with salary > (SELECT AVG(salary) FROM Employee), and the outer query then groups qualifying female employees by department. The scalar average is computed over which rows?',
+    options: [
+      'All employees in the company',
+      'Only female employees in each department',
+      'All employees in the current department',
+      'Only female employees in the company',
+    ],
+    correctIndex: 0,
+    explanation:
+      'The subquery is uncorrelated and has no WHERE clause, so it calculates one average over every Employee row. This is a paraphrased version of the GATE 2021 Set 2 pattern.',
+  },
+  {
+    id: 'verified-sql-2015-01',
+    topic: 'SQL',
+    kind: 'verified-pyq',
+    year: 2015,
+    paper: 'Set 1 · MCQ',
+    marks: 1,
+    sourceName: 'GeeksforGeeks GATE SQL & Relational Algebra PYQs',
+    sourceUrl:
+      'https://www.geeksforgeeks.org/quizzes/gate-dbms-sql-relational-algebra-pyq-2010-to-2025/',
+    question:
+      'Which relational-algebra operation most closely corresponds to the SQL SELECT list when SQL duplicate retention is taken into account?',
+    options: [
+      'Selection, with duplicates removed',
+      'Selection, with duplicates retained',
+      'Projection, with duplicates removed automatically',
+      'Projection, except that SQL retains duplicates unless DISTINCT is used',
+    ],
+    correctIndex: 3,
+    explanation:
+      'The SELECT list performs projection. Relational algebra uses set semantics, while SQL normally keeps duplicate projected rows. This item paraphrases a GATE 2015 Set 1 question.',
+  },
+  {
+    id: 'verified-sql-2015-02',
+    topic: 'SQL',
+    kind: 'verified-pyq',
+    year: 2015,
+    paper: 'Set 1 · NAT',
+    marks: 2,
+    sourceName: 'GeeksforGeeks GATE SQL & Relational Algebra PYQs',
+    sourceUrl:
+      'https://www.geeksforgeeks.org/quizzes/gate-dbms-sql-relational-algebra-pyq-2010-to-2025/',
+    question:
+      'Student contains names Ravi, Meera, and Ravi for three different roll numbers. After joining Performance on roll number, a query groups only by Student_Name. How many result groups are produced?',
+    options: ['1', '2', '3', 'It depends on the number of Performance rows'],
+    correctIndex: 1,
+    explanation:
+      'GROUP BY combines equal names even when the roll numbers differ, producing one Ravi group and one Meera group. This adapts the grouping idea tested in GATE 2015 Set 1.',
+  },
+  {
+    id: 'verified-sql-2018-01',
+    topic: 'SQL',
+    kind: 'verified-pyq',
+    year: 2018,
+    paper: 'MCQ',
+    marks: 1,
+    sourceName: 'GeeksforGeeks GATE SQL & Relational Algebra PYQs',
+    sourceUrl:
+      'https://www.geeksforgeeks.org/quizzes/gate-dbms-sql-relational-algebra-pyq-2010-to-2025/',
+    question:
+      'For two relations joined using the same equality condition, which join result is guaranteed to contain the outputs of INNER, LEFT OUTER, and RIGHT OUTER JOIN as subsets?',
+    options: [
+      'INNER JOIN',
+      'LEFT OUTER JOIN',
+      'RIGHT OUTER JOIN',
+      'FULL OUTER JOIN',
+    ],
+    correctIndex: 3,
+    explanation:
+      'FULL OUTER JOIN contains matching rows plus unmatched rows from both inputs, so it covers all three other results. This paraphrases the GATE 2018 join question.',
+  },
+  {
+    id: 'verified-sql-2017-01',
+    topic: 'SQL',
+    kind: 'verified-pyq',
+    year: 2017,
+    paper: 'Set 1 · NAT',
+    marks: 1,
+    sourceName: 'GeeksforGeeks GATE SQL & Relational Algebra PYQs',
+    sourceUrl:
+      'https://www.geeksforgeeks.org/quizzes/gate-dbms-sql-relational-algebra-pyq-2010-to-2025/',
+    question:
+      'Five departments contain 4, 3, 3, 2, and 1 employees respectively. What value is returned by taking AVG over these five department counts?',
+    options: ['2.0', '2.5', '2.6', '3.0'],
+    correctIndex: 2,
+    explanation:
+      'The department counts sum to 13, and 13 ÷ 5 = 2.6. This is a compact adaptation of the aggregation pattern in GATE 2017 Set 1.',
+  },
+  {
+    id: 'verified-sql-2020-01',
+    topic: 'SQL',
+    kind: 'verified-pyq',
+    year: 2020,
+    paper: 'NAT',
+    marks: 2,
+    sourceName: 'GeeksforGeeks GATE SQL & Relational Algebra PYQs',
+    sourceUrl:
+      'https://www.geeksforgeeks.org/quizzes/gate-dbms-sql-relational-algebra-pyq-2010-to-2025/',
+    question:
+      'A catalogue has P4 costs 200 and 250, so their average is 225. Across all catalogue rows, four rows have cost greater than 225. A join projects supplier number and name without DISTINCT. How many rows are returned?',
+    options: ['2', '3', '4', '5'],
+    correctIndex: 2,
+    explanation:
+      'Every qualifying catalogue row survives the join, and without DISTINCT repeated suppliers are not removed. Four rows qualify. This paraphrases the GATE 2020 nested-query pattern.',
+  },
   {
     id: 'ra-01',
     topic: 'Relational Algebra',

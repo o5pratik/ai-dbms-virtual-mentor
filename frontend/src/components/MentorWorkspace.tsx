@@ -440,6 +440,10 @@ export function MentorWorkspace({
       setSelectedTable('Student');
     setActiveView(view);
   };
+  const generateMoreForTopic = (topic: string) => {
+    window.sessionStorage.setItem('apexdb-quiz-topic', topic);
+    navigateTo('quiz');
+  };
   const guideView = ['learn', 'team', 'help'].includes(activeView);
   const quizView =
     activeView === 'quiz' ||
@@ -625,7 +629,7 @@ export function MentorWorkspace({
         </section>
       ) : activeView === 'pyq' ? (
         <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
-          <PyqBankWorkspace />
+          <PyqBankWorkspace onGenerateMore={generateMoreForTopic} />
         </section>
       ) : activeView === 'leaderboard' ? (
         <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
@@ -851,7 +855,7 @@ export function MentorWorkspace({
       ) : activeView === 'quiz' ? (
         <QuizContextPanel />
       ) : activeView === 'pyq' ? (
-        <PyqBankContextPanel />
+        <PyqBankContextPanel onGenerateMore={generateMoreForTopic} />
       ) : activeView === 'leaderboard' ? (
         <LeaderboardContextPanel />
       ) : activeView === 'playground' ? (

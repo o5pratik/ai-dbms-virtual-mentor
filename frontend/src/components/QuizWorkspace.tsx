@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowRight,
   BrainCircuit,
+  CalendarDays,
   Check,
   CheckCircle2,
   CircleHelp,
@@ -43,6 +44,11 @@ export function QuizWorkspace() {
   const [leaderboardMessage, setLeaderboardMessage] = useState('');
 
   useEffect(() => {
+    const pendingTopic = window.sessionStorage.getItem('apexdb-quiz-topic');
+    if (pendingTopic) {
+      setTopic(pendingTopic);
+      window.sessionStorage.removeItem('apexdb-quiz-topic');
+    }
     const receiveTopic = (event: Event) => {
       const nextTopic = (event as CustomEvent<string>).detail;
       if (nextTopic) setTopic(nextTopic);
@@ -117,7 +123,7 @@ export function QuizWorkspace() {
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-bright)]">
               Ask the AI for original practice questions based on recurring
               concepts and reasoning patterns from GATE DBMS previous-year
-              papers.
+              papers. Generate up to 15 fresh questions for any topic.
             </p>
           </div>
           {quiz ? (
@@ -174,6 +180,8 @@ export function QuizWorkspace() {
                 <option value={3}>3</option>
                 <option value={5}>5</option>
                 <option value={8}>8</option>
+                <option value={10}>10</option>
+                <option value={15}>15</option>
               </select>
             </label>
             <button
@@ -297,6 +305,13 @@ export function QuizWorkspace() {
                       </span>
                       <span className="text-[10px] uppercase tracking-wide text-[var(--muted)]">
                         1 mark
+                      </span>
+                      <span className="flex items-center gap-1 rounded-full border border-[color:rgb(246_200_95_/_28%)] bg-[color:rgb(246_200_95_/_7%)] px-2 py-0.5 text-[10px] font-semibold text-[#f6c85f]">
+                        <CalendarDays size={11} />
+                        {question.origin === 'ai-generated'
+                          ? 'AI-generated'
+                          : 'Built-in'}{' '}
+                        · GATE {question.pattern_year} pattern
                       </span>
                     </div>
                     <h3 className="mt-2 text-base font-semibold leading-7 text-[var(--text)]">
@@ -450,8 +465,42 @@ export function QuizContextPanel() {
           </p>
           <p className="mt-1 text-xs leading-5 text-[var(--muted-bright)]">
             Questions follow GATE DBMS concepts and patterns, but are newly
-            generated rather than copied from official papers.
+            generated rather than copied from official papers. A year badge
+            names the closest question style—it does not claim the question was
+            asked in that year.
           </p>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-[var(--border)] p-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+          PYQ pattern references
+        </p>
+        <div className="mt-3 space-y-2 text-xs leading-5">
+          <a
+            href="https://www.geeksforgeeks.org/dbms/database-management-system-gate-questions/"
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded-lg bg-[#0b1018] px-3 py-2 text-[var(--blue-bright)] hover:underline"
+          >
+            GeeksforGeeks · Topic-wise GATE DBMS PYQs
+          </a>
+          <a
+            href="https://www.geeksforgeeks.org/quizzes/gate-dbms-sql-relational-algebra-pyq-2010-to-2025/"
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded-lg bg-[#0b1018] px-3 py-2 text-[var(--blue-bright)] hover:underline"
+          >
+            GeeksforGeeks · SQL & Relational Algebra 2010–2025
+          </a>
+          <a
+            href="https://questions.examside.com/past-years/gate/gate-cse/database-management-system/structured-query-language"
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded-lg bg-[#0b1018] px-3 py-2 text-[var(--blue-bright)] hover:underline"
+          >
+            ExamSIDE · GATE SQL past-year index
+          </a>
         </div>
       </div>
     </aside>

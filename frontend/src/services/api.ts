@@ -50,6 +50,8 @@ export type GateQuizQuestion = {
   correct_index: number;
   explanation: string;
   concept: string;
+  origin: 'ai-generated' | 'built-in';
+  pattern_year: number;
 };
 export type GateQuizResponse = {
   title: string;

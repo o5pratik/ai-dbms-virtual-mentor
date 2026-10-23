@@ -6,10 +6,12 @@ import {
   Check,
   ChevronDown,
   CircleHelp,
+  ExternalLink,
   Filter,
   LibraryBig,
   RotateCcw,
   Shuffle,
+  Sparkles,
   Target,
   Trophy,
 } from 'lucide-react';
@@ -25,7 +27,11 @@ function shuffled<T>(items: T[]) {
   return [...items].sort(() => Math.random() - 0.5);
 }
 
-export function PyqBankWorkspace() {
+export function PyqBankWorkspace({
+  onGenerateMore,
+}: {
+  onGenerateMore: (topic: string) => void;
+}) {
   const [topic, setTopic] = useState('All topics');
   const [search, setSearch] = useState('');
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -49,7 +55,9 @@ export function PyqBankWorkspace() {
         (item) =>
           !query ||
           item.question.toLowerCase().includes(query) ||
-          item.topic.toLowerCase().includes(query),
+          item.topic.toLowerCase().includes(query) ||
+          String(item.year ?? '').includes(query) ||
+          item.paper?.toLowerCase().includes(query),
       );
   }, [order, search, topic]);
 
@@ -100,12 +108,24 @@ export function PyqBankWorkspace() {
                 GATE DBMS PYQ Practice
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted-bright)]">
-                Practise {GATE_PYQ_BANK.length} carefully paraphrased questions
-                organized by the recurring concepts tested in GATE DBMS papers.
-                Check each answer instantly and learn from the explanation.
+                Practise {GATE_PYQ_BANK.length} curated questions: verified,
+                paraphrased PYQ patterns with year labels plus original
+                GATE-style drills. Check each answer instantly and learn from
+                the explanation.
               </p>
             </div>
             <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  onGenerateMore(
+                    topic === 'All topics' ? 'Mixed DBMS topics' : topic,
+                  )
+                }
+                className="flex items-center gap-2 rounded-xl bg-[linear-gradient(135deg,var(--violet),var(--blue))] px-3.5 py-2.5 text-xs font-bold text-white hover:brightness-110"
+              >
+                <Sparkles size={14} /> Generate more with AI
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -235,9 +255,29 @@ export function PyqBankWorkspace() {
                     {index + 1}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <span className="rounded-full bg-[color:rgb(155_124_255_/_10%)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#c5b7ff]">
-                      {item.topic}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-[color:rgb(155_124_255_/_10%)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#c5b7ff]">
+                        {item.topic}
+                      </span>
+                      {item.kind === 'verified-pyq' && item.year ? (
+                        <a
+                          href={item.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={`Reference: ${item.sourceName}`}
+                          className="flex items-center gap-1 rounded-full border border-[color:rgb(246_200_95_/_30%)] bg-[color:rgb(246_200_95_/_8%)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#f6c85f] hover:bg-[color:rgb(246_200_95_/_14%)]"
+                        >
+                          Paraphrased GATE {item.year}
+                          {item.paper ? ` · ${item.paper}` : ''}
+                          {item.marks ? ` · ${item.marks} mark` : ''}
+                          <ExternalLink size={10} />
+                        </a>
+                      ) : (
+                        <span className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                          Original GATE-style · 2010–2025 pattern
+                        </span>
+                      )}
+                    </div>
                     <h2 className="mt-3 text-base font-semibold leading-7 text-[var(--text)]">
                       {item.question}
                     </h2>
@@ -332,7 +372,11 @@ export function PyqBankWorkspace() {
   );
 }
 
-export function PyqBankContextPanel() {
+export function PyqBankContextPanel({
+  onGenerateMore,
+}: {
+  onGenerateMore: (topic: string) => void;
+}) {
   return (
     <aside className="app-mentor overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)] p-4">
       <div className="rounded-2xl border border-[color:rgb(109_141_255_/_28%)] bg-[color:rgb(109_141_255_/_7%)] p-4">
@@ -345,6 +389,13 @@ export function PyqBankContextPanel() {
           explanation. Shuffle the bank when repeating a practice session.
         </p>
       </div>
+      <button
+        type="button"
+        onClick={() => onGenerateMore('Mixed DBMS topics')}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,var(--violet),var(--blue))] px-4 py-3 text-sm font-bold text-white hover:brightness-110"
+      >
+        <Sparkles size={15} /> Generate fresh topic-wise questions
+      </button>
       <div className="mt-4 rounded-2xl border border-[var(--border)] p-4">
         <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
           Coverage
@@ -364,9 +415,41 @@ export function PyqBankContextPanel() {
         </div>
       </div>
       <p className="mt-4 rounded-xl border border-dashed border-[var(--border)] p-3 text-xs leading-5 text-[var(--muted)]">
-        These are educational paraphrases and original adaptations of recurring
-        GATE DBMS concepts—not verbatim reproductions of official papers.
+        Gold year badges identify verified, paraphrased PYQ patterns. Grey
+        badges identify original practice questions. Generated questions never
+        pretend to be official PYQs.
       </p>
+      <div className="mt-4 rounded-2xl border border-[var(--border)] p-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+          Reference collections
+        </p>
+        <div className="mt-3 space-y-2">
+          {[
+            [
+              'Topic-wise DBMS PYQs',
+              'https://www.geeksforgeeks.org/dbms/database-management-system-gate-questions/',
+            ],
+            [
+              'SQL & RA · 2010–2025',
+              'https://www.geeksforgeeks.org/quizzes/gate-dbms-sql-relational-algebra-pyq-2010-to-2025/',
+            ],
+            [
+              'ExamSIDE SQL PYQs',
+              'https://questions.examside.com/past-years/gate/gate-cse/database-management-system/structured-query-language',
+            ],
+          ].map(([label, href]) => (
+            <a
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between rounded-lg bg-[#0b1018] px-3 py-2 text-xs text-[var(--blue-bright)] hover:underline"
+            >
+              {label} <ExternalLink size={11} />
+            </a>
+          ))}
+        </div>
+      </div>
     </aside>
   );
 }
