@@ -53,6 +53,7 @@ import {
 import { formatSql } from '../services/sql-intelligence';
 import { ErDiagram } from './ErDiagram';
 import { LeaderboardContextPanel, LeaderboardWorkspace } from './Leaderboard';
+import { PyqBankContextPanel, PyqBankWorkspace } from './PyqBank';
 import { MentorPanel, type MentorView } from './MentorPanel';
 import {
   GuideContextPanel,
@@ -439,10 +440,15 @@ export function MentorWorkspace({
       setSelectedTable('Student');
     setActiveView(view);
   };
+  const generateMoreForTopic = (topic: string) => {
+    window.sessionStorage.setItem('apexdb-quiz-topic', topic);
+    navigateTo('quiz');
+  };
   const guideView = ['learn', 'team', 'help'].includes(activeView);
   const quizView =
     activeView === 'quiz' ||
     activeView === 'pyq' ||
+    activeView === 'exam' ||
     activeView === 'leaderboard';
   const requestReport = (format: 'pdf' | 'doc' | 'txt') => {
     const dispatch = () =>
@@ -496,9 +502,11 @@ export function MentorWorkspace({
               : quizView
                 ? activeView === 'leaderboard'
                   ? 'Student rankings'
-                  : activeView === 'pyq'
+                  : activeView === 'exam'
                     ? 'Competitive exam mode'
-                    : 'AI GATE practice'
+                    : activeView === 'pyq'
+                      ? 'PYQ question bank'
+                      : 'AI GATE practice'
                 : activeView === 'write-lab' ||
                     activeView === 'editable-er' ||
                     (activeView === 'playground' && playgroundMode === 'edit')
@@ -623,6 +631,10 @@ export function MentorWorkspace({
           <QuizWorkspace />
         </section>
       ) : activeView === 'pyq' ? (
+        <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
+          <PyqBankWorkspace onGenerateMore={generateMoreForTopic} />
+        </section>
+      ) : activeView === 'exam' ? (
         <section className="app-workspace min-h-0 min-w-0 overflow-hidden">
           <QuizWorkspace examMode />
         </section>
@@ -850,6 +862,8 @@ export function MentorWorkspace({
       ) : activeView === 'quiz' ? (
         <QuizContextPanel />
       ) : activeView === 'pyq' ? (
+        <PyqBankContextPanel onGenerateMore={generateMoreForTopic} />
+      ) : activeView === 'exam' ? (
         <QuizContextPanel examMode />
       ) : activeView === 'leaderboard' ? (
         <LeaderboardContextPanel />

@@ -29,6 +29,7 @@ export type WorkspaceView =
   | 'topics'
   | 'quiz'
   | 'pyq'
+  | 'exam'
   | 'leaderboard'
   | 'learn'
   | 'team'
@@ -41,7 +42,8 @@ export const primaryNavigation: Array<{
 }> = [
   { label: 'SQL Workspace', icon: Braces, view: 'playground' as const },
   { label: 'AI Quiz', icon: BrainCircuit, view: 'quiz' },
-  { label: 'Competitive Exam', icon: LibraryBig, view: 'pyq' },
+  { label: 'Topic-wise PYQs', icon: LibraryBig, view: 'pyq' },
+  { label: 'Competitive Exam', icon: Clock3, view: 'exam' },
   { label: 'Leaderboard', icon: Trophy, view: 'leaderboard' },
   { label: 'ER Diagram', icon: Workflow, view: 'editable-er' },
   { label: 'Learning Path', icon: BookOpen, view: 'topics' },

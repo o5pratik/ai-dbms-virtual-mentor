@@ -331,8 +331,12 @@ const helpSteps = [
     text: 'Open AI Quiz from the top navigation, enter a DBMS topic, choose the difficulty and question count, then generate a fresh GATE-style quiz. Submit all answers to see your score and step-by-step explanations.',
   },
   {
+    title: 'Practise topic-wise PYQs',
+    text: 'Open Topic-wise PYQs to browse the year-labelled practice bank by DBMS topic. Choose an option and check each question individually to reveal its explanation.',
+  },
+  {
     title: 'Take a competitive exam',
-    text: 'Open Competitive Exam from the top navigation, choose a DBMS topic, select up to 50 questions, set a time limit, and start. Submit once to receive your score and review every explanation.',
+    text: 'Open Competitive Exam from the top navigation, choose a DBMS topic, select up to 50 PYQ-pattern questions, set a time limit, and start. Answers and explanations remain hidden until you submit or time expires.',
   },
   {
     title: 'Climb the leaderboard',
@@ -408,8 +412,12 @@ export function HelpPage() {
                     'Generates original GATE-style DBMS questions, scores your answers, and explains each solution.',
                   ],
                   [
+                    'Topic-wise PYQs',
+                    'Opens the searchable, year-labelled PYQ practice bank with individual answer checking.',
+                  ],
+                  [
                     'Competitive Exam',
-                    'Opens the filterable question bank with instant checking and explanations.',
+                    'Starts a timed PYQ-pattern paper and reveals answers only after final submission.',
                   ],
                   [
                     'Leaderboard',
