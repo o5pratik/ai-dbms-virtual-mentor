@@ -108,10 +108,9 @@ export function PyqBankWorkspace({
                 GATE DBMS PYQ Practice
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted-bright)]">
-                Practise {GATE_PYQ_BANK.length} curated questions: verified,
-                paraphrased PYQ patterns with year labels plus original
-                GATE-style drills. Check each answer instantly and learn from
-                the explanation.
+                Practise {GATE_PYQ_BANK.length} curated questions with GATE year
+                labels plus original GATE-style drills. Check each answer
+                instantly and learn from the explanation.
               </p>
             </div>
             <div className="flex shrink-0 gap-2">
@@ -267,9 +266,7 @@ export function PyqBankWorkspace({
                           title={`Reference: ${item.sourceName}`}
                           className="flex items-center gap-1 rounded-full border border-[color:rgb(246_200_95_/_30%)] bg-[color:rgb(246_200_95_/_8%)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#f6c85f] hover:bg-[color:rgb(246_200_95_/_14%)]"
                         >
-                          Paraphrased GATE {item.year}
-                          {item.paper ? ` · ${item.paper}` : ''}
-                          {item.marks ? ` · ${item.marks} mark` : ''}
+                          GATE {item.year}
                           <ExternalLink size={10} />
                         </a>
                       ) : (
@@ -415,9 +412,8 @@ export function PyqBankContextPanel({
         </div>
       </div>
       <p className="mt-4 rounded-xl border border-dashed border-[var(--border)] p-3 text-xs leading-5 text-[var(--muted)]">
-        Gold year badges identify verified, paraphrased PYQ patterns. Grey
-        badges identify original practice questions. Generated questions never
-        pretend to be official PYQs.
+        Gold badges show the GATE year. Grey badges identify original practice
+        questions.
       </p>
       <div className="mt-4 rounded-2xl border border-[var(--border)] p-4">
         <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
