@@ -86,7 +86,9 @@ export async function POST(request: Request) {
     const total = Number(payload.total);
 
     if (
-      (mode !== 'ai-quiz' && mode !== 'pyq-bank') ||
+      (mode !== 'ai-quiz' &&
+        mode !== 'pyq-bank' &&
+        mode !== 'competitive-exam') ||
       topic.length < 2 ||
       !Number.isInteger(score) ||
       !Number.isInteger(total) ||

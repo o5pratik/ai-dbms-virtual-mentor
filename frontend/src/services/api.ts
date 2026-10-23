@@ -301,7 +301,7 @@ export async function getLeaderboard() {
 }
 
 export async function submitLeaderboardScore(input: {
-  mode: 'ai-quiz' | 'pyq-bank';
+  mode: 'ai-quiz' | 'pyq-bank' | 'competitive-exam';
   topic: string;
   score: number;
   total: number;

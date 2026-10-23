@@ -86,7 +86,7 @@ export function LeaderboardWorkspace() {
               ApexDB Leaderboard
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-bright)]">
-              Earn points by completing AI quizzes and saving topic-wise PYQ
+              Earn points by completing AI quizzes and competitive exams
               practice sessions. A perfect score receives a 20-point bonus.
             </p>
           </div>
@@ -261,8 +261,8 @@ export function LeaderboardWorkspace() {
               Be the first on the leaderboard
             </h2>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted-bright)]">
-              Complete an AI quiz or check at least three topic-wise PYQs, then
-              save the session to earn your first points.
+              Complete an AI quiz or competitive exam, then save the session to
+              earn your first points.
             </p>
           </section>
         ) : null}
