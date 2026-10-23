@@ -39,6 +39,7 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
   const [count, setCount] = useState(examMode ? 20 : 5);
   const [duration, setDuration] = useState(30);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [timerStarted, setTimerStarted] = useState(false);
   const [quiz, setQuiz] = useState<GateQuizResponse | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -81,6 +82,7 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
     setSubmitted(false);
     setLeaderboardMessage('');
     setAnswers({});
+    setTimerStarted(false);
     try {
       const nextQuiz = await generateGateQuiz(topic.trim(), difficulty, count);
       setQuiz(nextQuiz);
@@ -101,10 +103,12 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
     if (
       !quiz ||
       submitted ||
+      (!force && examMode && !timerStarted) ||
       (!force && !examMode && answeredCount !== quiz.questions.length)
     )
       return;
     setSubmitted(true);
+    setTimerStarted(false);
     setLeaderboardMessage('Saving score…');
     try {
       const result = await submitLeaderboardScore({
@@ -120,7 +124,7 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
   };
 
   useEffect(() => {
-    if (!examMode || !quiz || submitted) return;
+    if (!examMode || !quiz || submitted || !timerStarted) return;
     if (secondsRemaining <= 0) {
       void submitQuiz(true);
       return;
@@ -130,7 +134,7 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
       1_000,
     );
     return () => window.clearTimeout(timer);
-  }, [examMode, quiz, secondsRemaining, submitted]);
+  }, [examMode, quiz, secondsRemaining, submitted, timerStarted]);
 
   const formattedTime = `${Math.floor(secondsRemaining / 60)
     .toString()
@@ -158,7 +162,8 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
             <div className="flex items-center gap-2">
               {examMode && !submitted ? (
                 <span className="flex items-center gap-1.5 rounded-full border border-[color:rgb(246_200_95_/_30%)] bg-[color:rgb(246_200_95_/_8%)] px-3 py-1.5 font-mono text-xs font-bold text-[#f6c85f]">
-                  <Clock3 size={13} /> {formattedTime}
+                  <Clock3 size={13} />{' '}
+                  {timerStarted ? formattedTime : `Ready · ${formattedTime}`}
                 </span>
               ) : null}
               <span className="w-fit rounded-full border border-[color:rgb(155_124_255_/_30%)] bg-[color:rgb(155_124_255_/_8%)] px-3 py-1.5 text-xs font-semibold text-[#c5b7ff]">
@@ -174,7 +179,9 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
           >
             <label className="block">
               <span className="text-xs font-bold text-[var(--muted-bright)]">
-                What topic should the AI test?
+                {examMode
+                  ? 'Choose a PYQ topic'
+                  : 'What topic should the AI test?'}
               </span>
               <input
                 value={topic}
@@ -255,7 +262,7 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
               {loading
                 ? 'Preparing…'
                 : examMode
-                  ? 'Start exam'
+                  ? 'Prepare exam'
                   : 'Generate quiz'}
             </button>
           </div>
@@ -328,7 +335,9 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
                   {quiz.difficulty} · {quiz.questions.length} MCQs ·{' '}
                   {answeredCount}/{quiz.questions.length} answered
                   {examMode && !submitted
-                    ? ` · ${formattedTime} remaining`
+                    ? timerStarted
+                      ? ` · ${formattedTime} remaining`
+                      : ' · Timer not started'
                     : ''}
                 </p>
               </div>
@@ -343,6 +352,14 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
                     </p>
                   </div>
                 </div>
+              ) : examMode && !timerStarted ? (
+                <button
+                  type="button"
+                  onClick={() => setTimerStarted(true)}
+                  className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#f6c85f,#ff9f43)] px-5 py-2.5 text-sm font-bold text-[#1c1606] shadow-[0_8px_24px_rgb(246_200_95_/_18%)] hover:brightness-110"
+                >
+                  <Clock3 size={16} /> Start timer
+                </button>
               ) : (
                 <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-muted)] sm:w-40">
                   <div
@@ -380,7 +397,10 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
                     <h3 className="mt-2 text-base font-semibold leading-7 text-[var(--text)]">
                       {question.question}
                     </h3>
-                    <fieldset className="mt-4 space-y-2" disabled={submitted}>
+                    <fieldset
+                      className="mt-4 space-y-2"
+                      disabled={submitted || (examMode && !timerStarted)}
+                    >
                       <legend className="sr-only">Choose one answer</legend>
                       {question.options.map((option, optionIndex) => {
                         const selected = answers[question.id] === optionIndex;
@@ -448,7 +468,9 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
                   {submitted
                     ? 'Solutions are now visible above.'
                     : examMode
-                      ? `${answeredCount}/${quiz.questions.length} answered · ${formattedTime} remaining`
+                      ? timerStarted
+                        ? `${answeredCount}/${quiz.questions.length} answered · ${formattedTime} remaining`
+                        : 'Your paper is ready. Start the timer to unlock the questions.'
                       : answeredCount === quiz.questions.length
                         ? 'All questions answered — ready to check.'
                         : `Answer ${quiz.questions.length - answeredCount} more question${quiz.questions.length - answeredCount === 1 ? '' : 's'}.`}
@@ -470,7 +492,8 @@ export function QuizWorkspace({ examMode = false }: { examMode?: boolean }) {
                   type="button"
                   onClick={() => void submitQuiz()}
                   disabled={
-                    !examMode && answeredCount !== quiz.questions.length
+                    (examMode && !timerStarted) ||
+                    (!examMode && answeredCount !== quiz.questions.length)
                   }
                   className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--green)] px-5 py-2.5 text-sm font-bold text-[#07130e] disabled:cursor-not-allowed disabled:opacity-40"
                 >
